@@ -22,7 +22,7 @@ FISH_query <- function(con,
   # --- Begin query ---
   #WaterBody
   WaterBody<-tbl(con, "WaterBody") %>%
-    filter(IsActive==T)%>% #filter out inactive rows to avoid duplicates
+    filter(IsActive==T)%>% #filter out inactive rows to avoid duplicates Issue #1
     select(MDNRID,WaterBodyName)%>%
     distinct(MDNRID, WaterBodyName, .keep_all = TRUE) #*should we carry over old waterbody ID for unlocated ones?
   if(!is.null(MDNRID)){
