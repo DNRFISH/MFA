@@ -1,20 +1,34 @@
-#### Test file for reading in FISH tables dynamically to reduce memory burden ####
-library(dplyr)
-library(odbc)
-library(DBI)
-library(stringr)
-library(lubridate)
-
-#Notes
-#10/31/2025: started developing dynamic read function; everything is working; just need to add in additional data; 
-#should also figure out where/when to filter out NAs associated with the catch data- there are a lot because of the moduledataId
+#' FISH_query
+#'
+#'@description
+#' Reads in data from FISHub dynamically to reduce memory burden. Can specify whether to query survey or efforts.
+#' Filters allow you to filter by waterbody, surveyID, survey purpose, year, or gear type
+#'
+#' @param con Connection to FISHub
+#' @param QueryType Specify "Survey" or "Efforts" (Default is Survey)
+#' @param MDNRID MDNRID to be used in query
+#' @param WaterBodyName WaterBodyName to be used in query
+#' @param SurveyId SurveyId to be used in query
+#' @param SurveyPurpose SurveyPurpose to be used in query. Options include: "Creel Census","Discretionary Survey","Fish Community",
+#' "General Survey","Limnology","Management Evaluation","Population Estimate","Population Reduction","Recruitment Evaluation",
+#' "Recruitment v Evaluation","Research Project","Special Study","Species Evaluation","Status & Trends","Stocking Evaluation".
+#' @param Year Year to be used in query
+#' @param GearType GearType to be used in query
+#' 
+#' @details
+#' Tables Used: WaterBody, Survey, SurveyPurpose, SurveyStatus, SurveyEffort, SurveyEffortDetails, and Gear
+#' 
+#' @return A merged data frame with data.
+#' 
+#' @export
+#'
 
 FISH_query <- function(con,
-                       QueryType="Survey", #or Efforts, Catch
+                       QueryType="Survey",
                        MDNRID = NULL,
                        WaterBodyName = NULL,
                        SurveyId=NULL,
-                       SurveyPurposeId=NULL,
+                       SurveyPurpose=NULL,
                        Year=NULL,
                        GearType=NULL) {
   
@@ -32,40 +46,51 @@ FISH_query <- function(con,
     WaterBody<-WaterBody%>%filter(.data$WaterBodyName %in% .env$WaterBodyName)
   }
   
-  #Survey
+  #Survey, SurveyPurpose, and SurveyStatus ID
   Survey<-tbl(con, "Survey")%>%
-    select(SurveyId,MDNRID,SurveyBeginTimestamp,SurveyPurposeId,SurveyStatusId,FixedOrRandom,SurveyPurposeDescription)
+    left_join(tbl(con, "SurveyPurpose")%>%select(SurveyPurposeId,Descriptions),by = "SurveyPurposeId")%>%
+    rename(SurveyPurpose=Descriptions)%>%
+    left_join(tbl(con, "SurveyStatus")%>%select(SurveyStatusId,Descriptions),by = "SurveyStatusId")%>%
+    rename(SurveyStatus=Descriptions)%>%
+    select(SurveyId,MDNRID,SurveyPurpose,SurveyStatus,SurveyBeginTimestamp,FixedOrRandom,SurveyPurposeDescription)
+    
   if(!is.null(SurveyId)){
       Survey<-Survey%>%filter(.data$SurveyId %in% .env$SurveyId)
     }
-  if(!is.null(SurveyPurposeId)){
-    Survey<-Survey%>%filter(.data$SurveyPurposeId %in% .env$SurveyPurposeId)
+  if(!is.null(SurveyPurpose)){
+    Survey<-Survey%>%filter(.data$SurveyPurpose %in% .env$SurveyPurpose)
   }
   if(!is.null(Year)){
     Survey<-Survey%>%filter(lubridate::year(.data$SurveyBeginTimestamp) %in% .env$Year)
   }
+
   
-  #SurveyEffortGearSet
-  SurveyEffortGearSet<-tbl(con, "SurveyEffortGearSet") %>%
-      select(SurveyId,SurveyEffortId,GearType,GearCommonName)
-    if(!is.null(GearType)){
-      SurveyEffortGearSet<-SurveyEffortGearSet%>%filter(.data$GearType %in% .env$GearType)
-    }
+  #NEED TO DETERMINE WHERE EFFORT MEASUREMENT AND QUANTITY SHOULD COME FROM; SENT NOTE TO KK
   
-    
   #SurveyEffort
   SurveyEffort<-tbl(con, "SurveyEffort") %>%
     select(SurveyId,SurveyEffortId,SurveyEffortKey,GearTypeId,ModuleId,
            EffortNumberofGearUsed,EffortMeasurement,EffortQuantity,EffortMeasurement2,EffortQuantity2)
   
+  #SurveyEffortDetail
+  SurveyEffortDetail <- tbl(con, "SurveyEffortDetail") %>%
+  select(SurveyEffortId, GearId, BeginningEffortTimestamp, EndingEffortTimestamp, EffortNumberofGearUsed, EffortTotalQuantity, 
+         EffortTotalMeasurement, EffortAlternateQuantity, EffortAlternateMeasurement)
+  
+  #Gear
+  Gear <- tbl(con, "Gear") %>%
+    select(GearId, GearType)
+
   #do joins based on type of query
   joinDat<-WaterBody%>%
     inner_join(Survey,by="MDNRID")
   if (QueryType%in%c("Efforts","Catch")) {
     joinDat<-joinDat%>%
-      inner_join(SurveyEffortGearSet,by="SurveyId")%>%
-      inner_join(SurveyEffort,by=c("SurveyId","SurveyEffortId"))
+      left_join(SurveyEffort,by="SurveyId")%>%
+      left_join(SurveyEffortDetail,by="SurveyEffortId")%>%
+      left_join(Gear,by="GearId")
   }
+  
   if (QueryType%in%c("Catch")) {
   print("still need to add catch data")
   }
