@@ -8,6 +8,7 @@ library(dplyr)
 library(odbc)
 library(DBI)
 library(stringr)
+library(lubridate)
 
 
 ###############################################################################################################################
@@ -33,11 +34,13 @@ invisible(lapply(list.files("./code/", full.names = TRUE,recursive = T), source)
 #single survey
 FISH_Data <- FISH_query(con,QueryType = "Efforts",SurveyId = 9320)
 #single survey with an effort with zero captures
-FISH_Data <- FISH_query(con,SurveyId = 13601)
+FISH_Data <- FISH_query(con,QueryType = "Efforts",SurveyId = 13601)
 #all surveys from a waterbody
 FISH_Data <- FISH_query(con,QueryType = "Survey",WaterBodyName = "Lake Orion")
 FISH_Data <- FISH_query(con,QueryType = "Efforts",SurveyId = 1162)
 
+#all SnT surveys from 2025
+FISH_Data <- FISH_query(con,QueryType = "Survey",SurveyPurpose = "Status & Trends",Year=2025)
 
 ###############################################################################################################################
 ##Catch Summaries
