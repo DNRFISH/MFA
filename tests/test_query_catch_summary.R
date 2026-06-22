@@ -9,6 +9,7 @@ library(odbc)
 library(DBI)
 library(stringr)
 library(lubridate)
+library(ggplot2)
 
 
 ###############################################################################################################################
@@ -73,3 +74,15 @@ scaleEnvelopeTest <- tbl(con, "ModuleDataScaleEnvelope") %>%
   filter(SurveyId==805)%>%
   collect()
 
+###############################################################################################################################
+##Age-length Summaries
+###############################################################################################################################
+#both 805 and 1162 of these look good!
+FISH_Data <- FISH_query(con,QueryType = "Efforts",SurveyId = 805)
+ageDat<-age_length_summary(FISH_Data,OutputType = "RawData")
+ageDat<-age_length_summary(FISH_Data,OutputType = "Table")
+age_length_summary(FISH_Data,OutputType = "Figure")
+
+FISH_Data <- FISH_query(con,QueryType = "Efforts",SurveyId = 1162)
+ageDat<-age_length_summary(FISH_Data,OutputType = "Table")
+age_length_summary(FISH_Data,OutputType = "Figure")
