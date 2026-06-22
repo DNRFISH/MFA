@@ -8,6 +8,8 @@ library(dplyr)
 library(odbc)
 library(DBI)
 library(stringr)
+library(lubridate)
+library(ggplot2)
 
 
 ###############################################################################################################################
@@ -33,11 +35,13 @@ invisible(lapply(list.files("./code/", full.names = TRUE,recursive = T), source)
 #single survey
 FISH_Data <- FISH_query(con,QueryType = "Efforts",SurveyId = 9320)
 #single survey with an effort with zero captures
-FISH_Data <- FISH_query(con,SurveyId = 13601)
+FISH_Data <- FISH_query(con,QueryType = "Efforts",SurveyId = 13601)
 #all surveys from a waterbody
 FISH_Data <- FISH_query(con,QueryType = "Survey",WaterBodyName = "Lake Orion")
 FISH_Data <- FISH_query(con,QueryType = "Efforts",SurveyId = 1162)
 
+#all SnT surveys from 2025
+FISH_Data <- FISH_query(con,QueryType = "Survey",SurveyPurpose = "Status & Trends",Year=2025)
 
 ###############################################################################################################################
 ##Catch Summaries
@@ -70,3 +74,15 @@ scaleEnvelopeTest <- tbl(con, "ModuleDataScaleEnvelope") %>%
   filter(SurveyId==805)%>%
   collect()
 
+###############################################################################################################################
+##Age-length Summaries
+###############################################################################################################################
+#both 805 and 1162 of these look good!
+FISH_Data <- FISH_query(con,QueryType = "Efforts",SurveyId = 805)
+ageDat<-age_length_summary(FISH_Data,OutputType = "RawData")
+ageDat<-age_length_summary(FISH_Data,OutputType = "Table")
+age_length_summary(FISH_Data,OutputType = "Figure")
+
+FISH_Data <- FISH_query(con,QueryType = "Efforts",SurveyId = 1162)
+ageDat<-age_length_summary(FISH_Data,OutputType = "Table")
+age_length_summary(FISH_Data,OutputType = "Figure")
