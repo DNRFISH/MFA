@@ -49,9 +49,9 @@
 #Joins(by): ModuleData(ModuleDataId), SpeciesStrain(SpeciesStrainId)
 
 ##ModuleDataScaleEnvelope
-#Functions:catch_summary_table
-#Fields used: ModuleDataId,SpeciesStrainId,InchGroup,NumberCaughtUnmarked,NumberCaughtMarked
-#Joins(by): ModuleData(ModuleDataId), SpeciesStrain(SpeciesStrainId)
+#Functions:catch_summary_table, age_length_summary
+#Fields used: SurveyId,ModuleDataId,EnvelopeSerialNumber,SpeciesStrainId,TotalLengthEntered,AgeClassId
+#Joins(by): ModuleData(ModuleDataId), SpeciesStrain(SpeciesStrainId), AgeClass(AgeClassId)
 
 ##ModuleData
 #Functions:catch_summary_table
@@ -65,3 +65,7 @@
 #Joins(by): ModuleDataCatchBySpecies(SpeciesStrainId), ModuleDataCatchSampleByInchGroup(SpeciesStrainId),...
 #...ModuleDataScaleEnvelope(SpeciesStrainId)
 
+##AgeClass
+#Functions:age_length_summary
+#Fields used: AgeClassId,Descriptions
+#Joins(by): ModuleDataScaleEnvelope(AgeClassId)
