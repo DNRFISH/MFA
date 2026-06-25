@@ -29,6 +29,19 @@ invisible(lapply(list.files("./code/", full.names = TRUE,recursive = T), source)
 
 
 ###############################################################################################################################
+##Read in a single table (for testing)
+###############################################################################################################################
+SurveyGear <- tbl(con, "SurveyEffortDetail")%>%
+  left_join(tbl(con, "Gear")%>%select(GearId,GearType),by = "GearId")%>%
+  collect()
+SurveyGearNAs<-SurveyGear%>%filter(is.na(EffortTotalQuantity))
+table(SurveyGearNAs$GearType)
+
+GearEffortMeasurement <- tbl(con, "GearEffortMeasurement")%>%
+  #left_join(tbl(con, "Gear")%>%select(GearId,GearType),by = "GearId")%>%
+  collect()
+
+###############################################################################################################################
 ##Query data
 ###############################################################################################################################
 #Read in Data
@@ -86,3 +99,10 @@ age_length_summary(FISH_Data,OutputType = "Figure")
 FISH_Data <- FISH_query(con,QueryType = "Efforts",SurveyId = 1162)
 ageDat<-age_length_summary(FISH_Data,OutputType = "Table")
 age_length_summary(FISH_Data,OutputType = "Figure")
+
+
+###############################################################################################################################
+##CPUE Summaries
+###############################################################################################################################
+#
+FISH_Data <- FISH_query(con,QueryType = "Efforts",SurveyId = 805)
