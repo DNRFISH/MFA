@@ -31,6 +31,13 @@ invisible(lapply(list.files("./code/", full.names = TRUE,recursive = T), source)
 ###############################################################################################################################
 ##Read in a single table (for testing)
 ###############################################################################################################################
+ModuleData <- tbl(con, "ModuleData")%>%
+  collect()
+ModuleDataCatchBySpecies <- tbl(con, "ModuleDataCatchBySpecies")%>%
+  collect()
+SurveyEffortCatchByEffortSpecies <- tbl(con, "SurveyEffortCatchByEffortSpecies")%>%
+  collect()
+
 SurveyGear <- tbl(con, "SurveyEffortDetail")%>%
   left_join(tbl(con, "Gear")%>%select(GearId,GearType),by = "GearId")%>%
   collect()
@@ -42,7 +49,7 @@ GearEffortMeasurement <- tbl(con, "GearEffortMeasurement")%>%
   collect()
 
 ###############################################################################################################################
-##Query data
+##Query survey/effort data
 ###############################################################################################################################
 #Read in Data
 #single survey
@@ -55,6 +62,12 @@ FISH_Data <- FISH_query(con,QueryType = "Efforts",SurveyId = 1162)
 
 #all SnT surveys from 2025
 FISH_Data <- FISH_query(con,QueryType = "Survey",SurveyPurpose = "Status & Trends",Year=2025)
+
+
+###############################################################################################################################
+##Query catch data
+###############################################################################################################################
+
 
 ###############################################################################################################################
 ##Catch Summaries
