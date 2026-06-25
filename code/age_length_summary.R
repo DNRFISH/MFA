@@ -18,17 +18,17 @@ age_length_summary<-function(FISH_Data,OutputType="RawData"){
     filter(SurveyId %in% !!SurveyIds) %>% 
     select(SurveyId,ModuleDataId,EnvelopeSerialNumber,SpeciesStrainId,TotalLengthEntered,AgeClassId)%>%
     left_join(tbl(con, "AgeClass")%>%
-                select(AgeClassId,Name),by = "AgeClassId")%>%
+                select(AgeClassId,Descriptions),by = "AgeClassId")%>%
     left_join(tbl(con, "ModuleData") %>%
                 select(ModuleId,ModuleDataId),by = "ModuleDataId")%>%
     left_join(tbl(con, "SpeciesStrain") %>%
                 select(SpeciesStrainId,Species,Strain),by = "SpeciesStrainId")%>%
     # #had to deal with multiple agers- set it up as mode age- no baseline mode function
-    group_by(SurveyId,EnvelopeSerialNumber,Species,Strain,TotalLengthEntered,Name)%>%
+    group_by(SurveyId,EnvelopeSerialNumber,Species,Strain,TotalLengthEntered,Descriptions)%>%
     summarise(n = n(), .groups = "drop") %>%
     group_by(SurveyId,EnvelopeSerialNumber,Species,Strain,TotalLengthEntered)%>%
     slice_max(n, n = 1, with_ties = FALSE) %>%
-    select(SurveyId,EnvelopeSerialNumber,Species,Strain,Age = Name,TotalLengthEntered)%>%
+    select(SurveyId,EnvelopeSerialNumber,Species,Strain,Age = Descriptions,TotalLengthEntered)%>%
     collect()
   
   if(OutputType=="RawData"){
