@@ -22,7 +22,7 @@ catch_summary_table <- function(FISH_Data, Special_Legal_Sizes = NULL) {
   
   #pull moduleIds from the data
   modIds <- unique(FISH_Data$ModuleId)
-
+  
   #specify default legal sizes (commented species don't have MSLs)
   legalSizeTib<-c(
     #"Black Crappie"=7,
@@ -80,30 +80,28 @@ catch_summary_table <- function(FISH_Data, Special_Legal_Sizes = NULL) {
       select(-LegalSize_override)
   }
   
+  #join legal sizes to species str table
+  SpeciesStrain<-tbl(con, "SpeciesStrain") %>%
+    select(SpeciesStrainId,Species,Strain)%>%
+    collect()
+  
+  legalSizeTibSpeciesStr<-SpeciesStrain%>%
+    left_join(legalSizeTib,by="Species")
+  
   #################################################################################
-  #read in catch by species data ####
+  #catch by species data ####
   #################################################################################
   catchSpecies <- tbl(con, "ModuleDataCatchBySpecies") %>%
     select(ModuleDataId,SpeciesStrainId,TotalNumberCaught,LengthAverage,LengthMaximum,LengthMinimum)%>%
     left_join(tbl(con, "ModuleData") %>%
                 select(ModuleId,ModuleDataId),by = "ModuleDataId")%>%
     filter(ModuleId %in% !!modIds) %>% #this syntax is needed to force R code into SQL for lazy loading
-    left_join(tbl(con, "SpeciesStrain") %>%
-                select(SpeciesStrainId,Species,Strain),by = "SpeciesStrainId")%>%
     collect()
   
-  #check to see if there was any data in the query
-  #NOTE: need to verify this with a survey that has some data
   if (nrow(catchSpecies)>0) {
-    #join with survey/effort data
-    catchSpeciesSurvey<-FISH_Data%>%
-      left_join(catchSpecies,by="ModuleId")%>%
-      left_join(legalSizeTib,by="Species")
-    
-    #summarize by survey and species
-    catchSpeciesSum <- catchSpeciesSurvey %>%
-      filter(!is.na(Species))%>% #filter out blank rows (due to efforts with no catches)
-      group_by(SurveyId, Species, LegalSize) %>%
+    catchSpeciesSum<-catchSpecies%>%
+      #filter(!is.na(SpeciesStrainId))%>% #filter out blank rows (due to efforts with no catches)
+      group_by(ModuleId,SpeciesStrainId) %>%
       summarise(
         TotalNumberCaught = sum(TotalNumberCaught, na.rm = TRUE),
         #calculated weighted mean lengths -- need to deal with some species not having length data
@@ -128,8 +126,7 @@ catch_summary_table <- function(FISH_Data, Special_Legal_Sizes = NULL) {
         Source = "Species",
         .groups = "drop"
       )
-  }else{print("No ModuleDataCatchBySpecies data available")}
-  
+  }
   
   #################################################################################
   #inch group data  ####
@@ -138,91 +135,77 @@ catch_summary_table <- function(FISH_Data, Special_Legal_Sizes = NULL) {
     select(ModuleDataId,SpeciesStrainId,InchGroup,NumberCaughtUnmarked,NumberCaughtMarked)%>%
     left_join(tbl(con, "ModuleData") %>%
                 select(ModuleId,ModuleDataId),by = "ModuleDataId")%>%
-    filter(ModuleId %in% !!modIds) %>% 
-    left_join(tbl(con, "SpeciesStrain") %>%
-                select(SpeciesStrainId,Species,Strain),by = "SpeciesStrainId")%>%
+    filter(ModuleId %in% !!modIds) %>%
     collect()
   
-  #check to see if there was any data in the query
   if (nrow(catchInch)>0) {
-    #join with survey/effort data
-    catchInchSurvey<-FISH_Data%>%
-      left_join(catchInch,by="ModuleId")%>%
-      left_join(legalSizeTib,by="Species")
-    
-    #summarize by survey and species
-    #*note- this uses inch group as the "best estimate" of length
-    catchInchSum <- catchInchSurvey %>%
-      filter(!is.na(Species))%>% #filter out blank rows (due to efforts with no catches)
+    catchInchSum<-catchInch%>%
+      #add surveyId
+      left_join(FISH_Data%>%select(SurveyId,ModuleId),by="ModuleId")%>%
+      #filter(!is.na(SpeciesStrainId))%>% #filter out blank rows (due to efforts with no catches)
       mutate(
-        count = NumberCaughtUnmarked) %>% #only use unmarked here to avoid double counting fish
-      group_by(SurveyId,Species,LegalSize) %>%
+        count = NumberCaughtUnmarked,#only use unmarked here to avoid double counting fish
+        lengthEst=InchGroup+0.5) %>%
+      left_join(legalSizeTibSpeciesStr%>%select(SpeciesStrainId,LegalSize),by="SpeciesStrainId")%>%
+      group_by(SurveyId,SpeciesStrainId,LegalSize) %>%
       summarise(
         TotalNumberCaught = sum(count, na.rm = TRUE),
         LengthAverage = round(weighted.mean(
-          InchGroup,
+          lengthEst,
           w = count,
           na.rm = TRUE
         ),2),
-        LengthMinimum = min(InchGroup, na.rm = TRUE),
-        LengthMaximum = max(InchGroup, na.rm = TRUE),
-        PctLegal = if (is.na(first(LegalSize))) {
-          NA_real_
-        } else {
-          round(100*sum(
-            InchGroup >= first(LegalSize),
-            na.rm = TRUE
-          ) / sum(count, na.rm = TRUE),0)
-        },
+        LengthMinimum = min(lengthEst, na.rm = TRUE),
+        LengthMaximum = max(lengthEst, na.rm = TRUE),
+        PctLegal = round(
+          100 * sum(count[lengthEst >= LegalSize], na.rm = TRUE) /
+            sum(count, na.rm = TRUE),
+          0
+        ),
         Source = "InchGroup",
         .groups = "drop"
       )
-  }else{print("No ModuleDataCatchSampleByInchGroup data available")}
+  }
   
   #################################################################################
-  #individual data  ####
+  #individual data 
   #################################################################################
   scaleEnvelope <- tbl(con, "ModuleDataScaleEnvelope") %>%
     select(SurveyId,ModuleDataId,EnvelopeSerialNumber,SpeciesStrainId,TotalLengthEntered)%>%
     left_join(tbl(con, "ModuleData") %>%
                 select(ModuleId,ModuleDataId),by = "ModuleDataId")%>%
     filter(ModuleId %in% !!modIds) %>% 
-    left_join(tbl(con, "SpeciesStrain") %>%
-                select(SpeciesStrainId,Species,Strain),by = "SpeciesStrainId")%>%
-    #had to deal with multiple agers- set it up as mean length by serial number 
-    group_by(SurveyId,EnvelopeSerialNumber,SpeciesStrainId,Species,Strain,TotalLengthEntered)%>%
-    summarise(TotalLengthEntered=mean(TotalLengthEntered,na.rm = T), .groups = "drop")%>%
     collect()
   
   #check to see if there was any data in the query
-  #*NOTE: need to verify this with a survey that has some data
+  #*NOTE: need to verify this with a survey that has some data (issue #5)
   if (nrow(scaleEnvelope)>0) {
-    #join with survey/effort data
-    scaleEnvelopeSurvey<-scaleEnvelope%>%
-      left_join(legalSizeTib,by="Species")%>%
-      left_join(FISH_Data%>%select(SurveyId)%>%distinct(),by="SurveyId") #*how do we filter this by gear/effort?
+    print("New ModuleDataScaleEnvelope data available; Contact MFA team.")
+    # #summarize by survey and species
+    # scaleEnvelopeSum <- scaleEnvelope %>%
+    #   #had to deal with multiple agers- set it up as mean length by serial number
+    #   group_by(SurveyId,SpeciesStrainId,EnvelopeSerialNumber)%>%
+    #   summarise(TotalLengthEntered=mean(TotalLengthEntered,na.rm = T), .groups = "drop")%>%
+    #   left_join(legalSizeTibSpeciesStr%>%select(SpeciesStrainId,LegalSize),by="SpeciesStrainId")%>%
+    #   group_by(SurveyId,SpeciesStrainId,LegalSize) %>%
+    #   summarise(
+    #     TotalNumberCaught = sum(n(), na.rm = TRUE),
+    #     LengthAverage = round(mean(TotalLengthEntered, na.rm = TRUE),2),
+    #     LengthMinimum = min(TotalLengthEntered, na.rm = TRUE),
+    #     LengthMaximum = max(TotalLengthEntered, na.rm = TRUE),
+    #     PctLegal = if (is.na(first(LegalSize))) {
+    #       NA_real_
+    #     } else {
+    #       round(100*sum(
+    #         TotalLengthEntered >= first(LegalSize),
+    #         na.rm = TRUE
+    #       ) / sum(n(), na.rm = TRUE),0)
+    #     },
+    #     Source = "ScaleEnvelope",
+    #     .groups = "drop"
+    #   )
+  }
   
-    
-    #summarize by survey and species
-    scaleEnvelopeSum <- scaleEnvelopeSurvey %>%
-      group_by(SurveyId,Species,LegalSize) %>%
-      summarise(
-        TotalNumberCaught = sum(n(), na.rm = TRUE),
-        LengthAverage = round(mean(TotalLengthEntered, na.rm = TRUE),2),
-        LengthMinimum = min(TotalLengthEntered, na.rm = TRUE),
-        LengthMaximum = max(TotalLengthEntered, na.rm = TRUE),
-        PctLegal = if (is.na(first(LegalSize))) {
-          NA_real_
-        } else {
-          round(100*sum(
-            TotalLengthEntered >= first(LegalSize),
-            na.rm = TRUE
-          ) / sum(n(), na.rm = TRUE),0)
-        },
-        Source = "ScaleEnvelope",
-        .groups = "drop"
-      )
-  }else{print("No ModuleDataScaleEnvelope data available; NOTE: data entered into FISH may be missing! Contact MFA team if issue is identifed.")}
   
   #################################################################################
   # combine data
@@ -236,6 +219,7 @@ catch_summary_table <- function(FISH_Data, Special_Legal_Sizes = NULL) {
   )
   
   combinedSum <- bind_rows(tables_list[!sapply(tables_list, is.null)])%>%
+    left_join(SpeciesStrain,by = "SpeciesStrainId")%>%
     select(SurveyId,Species,TotalNumberCaught,LengthAverage,LengthMinimum,LengthMaximum,LegalSize,PctLegal,Source)
   
   return(combinedSum)
