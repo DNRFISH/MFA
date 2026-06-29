@@ -65,21 +65,16 @@ FISH_query <- function(con,
   }
 
   
-  #NEED TO DETERMINE WHERE EFFORT MEASUREMENT AND QUANTITY SHOULD COME FROM; SENT NOTE TO KK
-  
-  #SurveyEffort
+
+  #SurveyEffort (issue #9)
   SurveyEffort<-tbl(con, "SurveyEffort") %>%
-    select(SurveyId,SurveyEffortId,SurveyEffortKey,GearTypeId,ModuleId,
-           EffortNumberofGearUsed,EffortMeasurement,EffortQuantity,EffortMeasurement2,EffortQuantity2)
+    select(SurveyId,SurveyEffortId,SurveyEffortKey,ModuleId)
   
-  #SurveyEffortDetail
+  #SurveyEffortDetail and Gear (issue #9)
   SurveyEffortDetail <- tbl(con, "SurveyEffortDetail") %>%
-  select(SurveyEffortId, GearId, BeginningEffortTimestamp, EndingEffortTimestamp, EffortNumberofGearUsed, EffortTotalQuantity, 
-         EffortTotalMeasurement, EffortAlternateQuantity, EffortAlternateMeasurement)
-  
-  #Gear
-  Gear <- tbl(con, "Gear") %>%
-    select(GearId, GearType)
+    left_join(tbl(con, "Gear") %>%select(GearId, GearType),by="GearId")%>%
+    select(SurveyEffortId, BeginningEffortTimestamp, EndingEffortTimestamp, GearType,EffortNumberofGearUsed, EffortTotalQuantity, 
+              EffortTotalMeasurement, EffortAlternateQuantity, EffortAlternateMeasurement)
 
   #do joins based on type of query
   joinDat<-WaterBody%>%
@@ -87,8 +82,7 @@ FISH_query <- function(con,
   if (QueryType%in%c("Efforts","Catch")) {
     joinDat<-joinDat%>%
       left_join(SurveyEffort,by="SurveyId")%>%
-      left_join(SurveyEffortDetail,by="SurveyEffortId")%>%
-      left_join(Gear,by="GearId")
+      left_join(SurveyEffortDetail,by="SurveyEffortId")
   }
   
   if (QueryType%in%c("Catch")) {
