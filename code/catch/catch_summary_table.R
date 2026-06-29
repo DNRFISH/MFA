@@ -12,11 +12,11 @@
 
 catch_summary_table <- function(catchData) {
   
-  #do a check to see if multiple gears are included in the table
-  if (length(unique(FISH_Data$GearType)) > 1) {
+  #do a check to see if multiple efforts are included in the table
+  if (length(unique(catchData$ModuleId)) > 1) {
     message(paste0("Warning: ",
-                   length(unique(FISH_Data$GearType)),
-                   " gears included in catch summary data"))
+                   length(unique(catchData$ModuleId)),
+                   " ModuleIds included in catch summary data"))
   }
   
   outTab<-catchData%>%
