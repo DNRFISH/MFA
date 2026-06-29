@@ -53,35 +53,32 @@ GearEffortMeasurement <- tbl(con, "GearEffortMeasurement")%>%
 ###############################################################################################################################
 #Read in Data
 #single survey
-FISH_Data <- FISH_query(con,QueryType = "Efforts",SurveyId = 9320)
+FISH_Data <- FISH_query(con,QueryType = "Efforts",SurveyId = 805)
 #single survey with an effort with zero captures
 FISH_Data <- FISH_query(con,QueryType = "Efforts",SurveyId = 13601)
 #all surveys from a waterbody
 FISH_Data <- FISH_query(con,QueryType = "Survey",WaterBodyName = "Lake Orion")
-FISH_Data <- FISH_query(con,QueryType = "Efforts",SurveyId = 1162)
+FISH_Data <- FISH_query(con,QueryType = "Efforts",SurveyId = 16923)
 
 #all SnT surveys from 2025
 FISH_Data <- FISH_query(con,QueryType = "Survey",SurveyPurpose = "Status & Trends",Year=2025)
 
 
 ###############################################################################################################################
-##Query catch data
+##Catch by effort query
 ###############################################################################################################################
-
+#single survey
+catchData <- catchByEffort(FISH_query(con,QueryType = "Efforts",SurveyId = 805))
+catchData <- catchByEffort(FISH_query(con,QueryType = "Efforts",SurveyId = 1162))
 
 ###############################################################################################################################
 ##Catch Summaries
 ###############################################################################################################################
-
-#examples to test out catch/inch tables
-catchSum_inch <- catch_summary_table(FISH_query(con,QueryType = "Efforts",SurveyId = 1228))
-catchSum_species <- catch_summary_table(FISH_query(con,QueryType = "Efforts",SurveyId = 16923))
-
 #compare to survey outputs (from Cleyo)
 #Lake Orion, 2023
 #total count = 1005 LMB for both
 #age count = 361 for both (can use this later for age data test)
-catchSum <- catch_summary_table(FISH_query(con,QueryType = "Efforts",SurveyId = 1162))
+catchSum <- catch_summary_table(catchByEffort(FISH_query(con,QueryType = "Efforts",SurveyId = 1162)))
 scaleEnvelopeTest <- tbl(con, "ModuleDataScaleEnvelope") %>%
   select(SurveyId,ModuleDataId,EnvelopeSerialNumber,SpeciesStrainId,TotalLengthEntered)%>%
   left_join(tbl(con, "SpeciesStrain") %>%
@@ -89,10 +86,10 @@ scaleEnvelopeTest <- tbl(con, "ModuleDataScaleEnvelope") %>%
   filter(SurveyId==1162)%>%
   collect()
 
-#Lake Sixteen, 2024
-#catch summary totals and length ranges are OK, but avg lengths are off
-#confirm totals: 5 NOP in catch summary, 4 in age data- was there 5 or 9 total caught?
-catchSum <- catch_summary_table(FISH_query(con,QueryType = "Efforts",SurveyId = 805)) 
+#Lake Sixteen, 2024 - see issue #4 
+#catch summary totals and length ranges are OK, but avg lengths are off; issue in FCS/FISH
+#confirm totals: 5 NOP in catch summary, 4 in age data- was there 5 or 9 total caught? - confirmed
+catchSum <-  catch_summary_table(catchByEffort(FISH_query(con,QueryType = "Efforts",SurveyId = 805)))
 scaleEnvelopeTest <- tbl(con, "ModuleDataScaleEnvelope") %>%
   select(SurveyId,ModuleDataId,EnvelopeSerialNumber,SpeciesStrainId,TotalLengthEntered)%>%
   left_join(tbl(con, "SpeciesStrain") %>%
@@ -101,7 +98,7 @@ scaleEnvelopeTest <- tbl(con, "ModuleDataScaleEnvelope") %>%
   collect()
 
 ###############################################################################################################################
-##Age-length Summaries
+##Age-length Summaries  need to update these after the query functions are updated
 ###############################################################################################################################
 #both 805 and 1162 of these look good!
 FISH_Data <- FISH_query(con,QueryType = "Efforts",SurveyId = 805)
