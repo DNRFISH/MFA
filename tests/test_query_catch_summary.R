@@ -107,5 +107,8 @@ age_length_summary(SurveyEffortData,OutputType = "Figure")
 ###############################################################################################################################
 ##CPUE Summaries
 ###############################################################################################################################
-#
-FISH_Data <- FISH_query(con,QueryType = "Efforts",SurveyId = 805)
+
+CatchEffortData <- FISH_query(con,QueryType = "Catch",SurveyId = 805)
+CatchEffortData <- FISH_query(con,QueryType = "Catch",SurveyPurpose = "Status & Trends",Year=2025)
+
+CPUE<-CPUE_byGear(CatchEffortData)
