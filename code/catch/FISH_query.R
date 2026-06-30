@@ -14,6 +14,7 @@
 #' "Recruitment v Evaluation","Research Project","Special Study","Species Evaluation","Status & Trends","Stocking Evaluation".
 #' @param Year Year to be used in query
 #' @param GearType GearType to be used in query
+#' @param Species Species name to be used in query
 #' 
 #' @details
 #' Tables Used: WaterBody, Survey, SurveyPurpose, SurveyStatus, SurveyEffort, SurveyEffortDetails, and Gear
@@ -30,7 +31,8 @@ FISH_query <- function(con,
                        SurveyId=NULL,
                        SurveyPurpose=NULL,
                        Year=NULL,
-                       GearType=NULL) {
+                       GearType=NULL,
+                       Species=NULL) {
   
   
   # --- Begin query ---
@@ -66,41 +68,58 @@ FISH_query <- function(con,
 
   
 
-  #SurveyEffort (issue #9)
-  SurveyEffort<-tbl(con, "SurveyEffort") %>%
-    select(SurveyId,SurveyEffortId,SurveyEffortKey,ModuleId)
-  
-  #SurveyEffortDetail and Gear (issue #9)
-  SurveyEffortDetail <- tbl(con, "SurveyEffortDetail") %>%
+  #SurveyEffort, SurveyEffortDetail and, Gear (issue #9)
+  Effort<-tbl(con, "SurveyEffort") %>%
+    select(SurveyId,SurveyEffortId,SurveyEffortKey,ModuleId)%>%
+    left_join(tbl(con, "SurveyEffortDetail"),by="SurveyEffortId")%>%
     left_join(tbl(con, "Gear") %>%select(GearId, GearType),by="GearId")%>%
-    select(SurveyEffortId, BeginningEffortTimestamp, EndingEffortTimestamp, GearType,EffortNumberofGearUsed, EffortTotalQuantity, 
+    select(SurveyId,SurveyEffortId,SurveyEffortKey,ModuleId, BeginningEffortTimestamp, EndingEffortTimestamp, GearType,EffortNumberofGearUsed, EffortTotalQuantity, 
               EffortTotalMeasurement, EffortAlternateQuantity, EffortAlternateMeasurement)
 
-  #do joins based on type of query
-  joinDat<-WaterBody%>%
+  if(!is.null(GearType)){
+    print("Note: query only retruns surveys/efforts that had the specified gears.")
+    Effort<-Effort%>%filter(.data$GearType %in% .env$GearType)
+  }
+  
+  #do joins
+  surveyDat<-WaterBody%>%
     inner_join(Survey,by="MDNRID")
-  if (QueryType%in%c("Efforts","Catch")) {
-    joinDat<-joinDat%>%
-      left_join(SurveyEffort,by="SurveyId")%>%
-      left_join(SurveyEffortDetail,by="SurveyEffortId")
-  }
   
-  if (QueryType%in%c("Catch")) {
-  print("still need to add catch data")
-  }
+  surveyEffortDat<-surveyDat%>%
+    left_join(Effort,by="SurveyId")
+
+  #collect surveyEffort data for use in catch query -- could modify this to stay SQL; would require reworking catchByEffort function
+  surveyEffortDat<-collect(surveyEffortDat)
+
+  #read in catch data
+  catchDat<-catchByEffort(surveyEffortDat)
   
-  #collect and return in order
-  outDat<-collect(joinDat)
-  if(nrow(outDat)==0){
-    print("No data found")
-    if(QueryType!="Survey"){
-      joinDat<-WaterBody%>%
-        inner_join(Survey,by="MDNRID")
-      outDat2<-collect(joinDat)
-      if(nrow(outDat==0)){
-        print("No Surveys Found")
-      }
+  #join to surveyEffort data
+  allDat<-surveyEffortDat%>%
+    full_join(catchDat,by=c("SurveyId","ModuleId"))
+  
+  if(!is.null(Species)){
+    allDat<-allDat%>%filter(.data$Species %in% .env$Species)
+  }
+
+  
+  #specify output based on query
+  if (QueryType=="Survey") {
+    outDat<-allDat%>%select(colnames(surveyDat))%>%unique()
+  }
+  if (QueryType=="Efforts") {
+    outDat<-allDat%>%select(colnames(surveyEffortDat))%>%unique()
+  }
+  if (QueryType=="Catch") {
+    outDat<-allDat
+    if(!is.null(Species)){
+      print("Note: query only retruns surveys/efforts that caught the specified species. It is missing efforts with no capture. Be cautious when calculating CPUE or use CPUE function .")
     }
+  }
+  
+  #print if no data found
+  if(nrow(outDat)==0){
+    print("No data found. Confirm spelling and data is in FISHub. Contact MFA team for assistance.")
   }
   return(outDat)
 }
