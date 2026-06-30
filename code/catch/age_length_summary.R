@@ -2,20 +2,56 @@
 #'
 #' Plot mean length by age by species
 #'
-#' @param FISH_Data Data query from FISH_query function
+#' @param FISH_Data Data query from FISH_query function; can be survey, efforts, or catch
 #' @param OutputType "RawData", "Table" or "Figure"
 #' @return ggplot
 #' @export
 #'
 
 age_length_summary<-function(FISH_Data,OutputType="RawData"){
-
+  
+  #count the number of fish (SurveyId+EnvelopeSerialNumber) with multiple entries, subset out
+  #based on the initial reveiw there are 2,940 with multiple entires, but they are all identical age and length.. seems suspicious?
+  multiEntries <- tbl(con, "ModuleDataScaleEnvelope") %>%
+    select(SurveyId, EnvelopeSerialNumber, TotalLengthEntered, AgeClassId) %>%
+    group_by(SurveyId, EnvelopeSerialNumber) %>%
+    summarise(
+      numEntry = n(),
+      n_lengths = n_distinct(TotalLengthEntered),
+      n_ages=n_distinct(AgeClassId),
+      .groups = "drop"
+    ) %>%
+    filter(numEntry > 1) %>%
+    inner_join(tbl(con, "ModuleDataScaleEnvelope"),by = c("SurveyId", "EnvelopeSerialNumber"))%>%
+    collect()
+  
+  
+  #note- currenlty pulls all age data from surveys; could set it up in the future to query by efforts/gear
   #pull moduleIds from the data
   SurveyIds <- unique(FISH_Data$SurveyId)
-  modIds <- unique(FISH_Data$ModuleId)
 
+  
+  #do a check for inconsistent lengths; this could happen when multiple ages are entered in FISHub
+  #none found when the function was developed (see above multiEntries table)
+  length_check <- tbl(con, "ModuleDataScaleEnvelope") %>%
+    filter(SurveyId %in% !!SurveyIds) %>% 
+    collect()%>%
+    group_by(SurveyId, EnvelopeSerialNumber) %>%
+    summarise(
+      n_lengths = n_distinct(TotalLengthEntered, na.rm = TRUE),
+      .groups = "drop"
+    )%>%
+    filter(n_lengths>1)
+  
+  if (nrow(length_check) > 0) {
+    stop(paste0("ERROR: Inconsistent lengths detected. Check age/length data."))
+  }
+  
+  #query data; currently set up to do mode by SurveyId,EnvelopeSerialNumber,Species,Strain,and TotalLengthEntered
+  #circle back to this once we confirm the age data (#8)
   scaleEnvelope <- tbl(con, "ModuleDataScaleEnvelope") %>%
     filter(SurveyId %in% !!SurveyIds) %>% 
+    filter(!is.na(TotalLengthEntered))%>% #do we want to filter these? revist after age data confirmation
     select(SurveyId,ModuleDataId,EnvelopeSerialNumber,SpeciesStrainId,TotalLengthEntered,AgeClassId)%>%
     left_join(tbl(con, "AgeClass")%>%
                 select(AgeClassId,Descriptions),by = "AgeClassId")%>%
@@ -23,7 +59,6 @@ age_length_summary<-function(FISH_Data,OutputType="RawData"){
                 select(ModuleId,ModuleDataId),by = "ModuleDataId")%>%
     left_join(tbl(con, "SpeciesStrain") %>%
                 select(SpeciesStrainId,Species,Strain),by = "SpeciesStrainId")%>%
-    # #had to deal with multiple agers- set it up as mode age- no baseline mode function
     group_by(SurveyId,EnvelopeSerialNumber,Species,Strain,TotalLengthEntered,Descriptions)%>%
     summarise(n = n(), .groups = "drop") %>%
     group_by(SurveyId,EnvelopeSerialNumber,Species,Strain,TotalLengthEntered)%>%
@@ -33,13 +68,13 @@ age_length_summary<-function(FISH_Data,OutputType="RawData"){
   
   if(OutputType=="RawData"){
     return(scaleEnvelope)
+    stop()
   }
   
   
   #Simple mean
   meanAgeDat<-scaleEnvelope%>%
     group_by(SurveyId,Species,Age)%>%
-    filter(!is.na(TotalLengthEntered))%>%
     summarise(N=length(TotalLengthEntered),
               Mean_Length=round(mean(TotalLengthEntered),2),
               Min_length=min(TotalLengthEntered),
