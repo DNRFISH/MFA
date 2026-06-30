@@ -2,33 +2,38 @@
 #'
 #' Plot mean length by age by species
 #'
-#' @param FISH_Data Data query from FISH_query function; can be survey, efforts, or catch
+#' @param SurveyEffortData "Effort" query from FISH_query function
 #' @param OutputType "RawData", "Table" or "Figure"
 #' @return ggplot
 #' @export
 #'
 
-age_length_summary<-function(FISH_Data,OutputType="RawData"){
+#' @details Pulls in survey level age-length data; weighted mean lengths estiamted using inch group catches; if not provided, it pulls in all efforts
+
+
+age_length_summary<-function(SurveyEffortData,OutputType="RawData"){
   
-  #count the number of fish (SurveyId+EnvelopeSerialNumber) with multiple entries, subset out
-  #based on the initial reveiw there are 2,940 with multiple entires, but they are all identical age and length.. seems suspicious?
-  multiEntries <- tbl(con, "ModuleDataScaleEnvelope") %>%
-    select(SurveyId, EnvelopeSerialNumber, TotalLengthEntered, AgeClassId) %>%
-    group_by(SurveyId, EnvelopeSerialNumber) %>%
-    summarise(
-      numEntry = n(),
-      n_lengths = n_distinct(TotalLengthEntered),
-      n_ages=n_distinct(AgeClassId),
-      .groups = "drop"
-    ) %>%
-    filter(numEntry > 1) %>%
-    inner_join(tbl(con, "ModuleDataScaleEnvelope"),by = c("SurveyId", "EnvelopeSerialNumber"))%>%
-    collect()
+  # #count the number of fish (SurveyId+EnvelopeSerialNumber) with multiple entries, subset out
+  # #based on the initial reveiw there are 2,940 with multiple entires, but they are all identical age and length.. seems suspicious? #8
+  # multiEntries <- tbl(con, "ModuleDataScaleEnvelope") %>%
+  #   select(SurveyId, EnvelopeSerialNumber, TotalLengthEntered, AgeClassId) %>%
+  #   group_by(SurveyId, EnvelopeSerialNumber) %>%
+  #   summarise(
+  #     numEntry = n(),
+  #     n_lengths = n_distinct(TotalLengthEntered),
+  #     n_ages=n_distinct(AgeClassId),
+  #     .groups = "drop"
+  #   ) %>%
+  #   filter(numEntry > 1) %>%
+  #   inner_join(tbl(con, "ModuleDataScaleEnvelope"),by = c("SurveyId", "EnvelopeSerialNumber"))%>%
+  #   collect()
   
   
-  #note- currenlty pulls all age data from surveys; could set it up in the future to query by efforts/gear
-  #pull moduleIds from the data
-  SurveyIds <- unique(FISH_Data$SurveyId)
+  #note- currently pulls all age data from surveys and inch group data from all efforts in query
+  #pull moduleIds from the data; if not provided, pull by surveyIDs
+  SurveyIds <- unique(SurveyEffortData$SurveyId)
+  modIds <- unique(SurveyEffortData$ModuleId)
+  
 
   
   #do a check for inconsistent lengths; this could happen when multiple ages are entered in FISHub
@@ -84,35 +89,36 @@ age_length_summary<-function(FISH_Data,OutputType="RawData"){
   
   
   #Weighted mean (FD protocol; chap 15 by Schneider)
-  #NOTE- not complete! don't think it's calculating correctly
-  
   #get catch by inch data
   catchInch <- tbl(con, "ModuleDataCatchSampleByInchGroup") %>%
     select(ModuleDataId,SpeciesStrainId,InchGroup,NumberCaughtUnmarked,NumberCaughtMarked)%>%
     left_join(tbl(con, "ModuleData") %>%
                 select(ModuleId,ModuleDataId),by = "ModuleDataId")%>%
-    filter(ModuleId %in% !!modIds) %>% 
+    filter(ModuleId %in% !!modIds) %>%
     left_join(tbl(con, "SpeciesStrain") %>%
                 select(SpeciesStrainId,Species,Strain),by = "SpeciesStrainId")%>%
     collect()
-    
+
   #check to see if there was any data in the query
   if (nrow(catchInch)>0) {
     #join with survey/effort data
-    catchInchSurvey<-FISH_Data%>%
+    catchInchSurvey<-SurveyEffortData%>%
+      select(SurveyId,ModuleId)%>%
+      unique()%>%
       left_join(catchInch,by="ModuleId")
     
     #summarize by survey and species
     lengthFreq <- catchInchSurvey %>%
       filter(!is.na(Species))%>% #filter out blank rows (due to efforts with no catches)
       group_by(SurveyId,Species,InchGroup) %>%
-      summarize(N.caught=sum(NumberCaughtUnmarked))#only use unmarked here to avoid double counting fish
+      summarize(N.caught=sum(NumberCaughtUnmarked),.groups = "drop")#only use unmarked here to avoid double counting fish
       
     alk_prop<-scaleEnvelope%>%
       mutate(InchGroup=floor(TotalLengthEntered))%>%
       group_by(SurveyId,Species,InchGroup,Age)%>%
       summarize(N.aged=n(),
-                meanLength=mean(TotalLengthEntered))%>%
+                meanLength=mean(TotalLengthEntered),
+                .groups = "drop")%>%
       group_by(SurveyId, Species, InchGroup) %>%
       mutate(prop = N.aged / sum(N.aged)) %>%
       ungroup()
@@ -137,7 +143,7 @@ age_length_summary<-function(FISH_Data,OutputType="RawData"){
         return(outTab)
     }
   }else{
-    warning("No catch-at-length data available; returning simple means only.")
+    warning("No catch-by-inch group data available; returning simple means only.")
     if(OutputType=="Table"){
       return(meanAgeDat)
     }
