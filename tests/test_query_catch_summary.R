@@ -94,14 +94,14 @@ scaleEnvelopeTest <- tbl(con, "ModuleDataScaleEnvelope") %>%
 ##Age-length Summaries  need to update these after the query functions are updated
 ###############################################################################################################################
 #both 805 and 1162 of these look good!
-FISH_Data <- FISH_query(con,QueryType = "Efforts",SurveyId = 805)
-ageDat<-age_length_summary(FISH_Data,OutputType = "RawData")
-ageDat<-age_length_summary(FISH_Data,OutputType = "Table")
-age_length_summary(FISH_Data,OutputType = "Figure")
+SurveyEffortData <- FISH_query(con,QueryType = "Efforts",SurveyId = 805)
+ageDat<-age_length_summary(SurveyEffortData,OutputType = "RawData")
+ageDat<-age_length_summary(SurveyEffortData,OutputType = "Table")
+age_length_summary(SurveyEffortData,OutputType = "Figure")
 
-FISH_Data <- FISH_query(con,QueryType = "Efforts",SurveyId = 1162)
-ageDat<-age_length_summary(FISH_Data,OutputType = "Table")
-age_length_summary(FISH_Data,OutputType = "Figure")
+SurveyEffortData <- FISH_query(con,QueryType = "Efforts",SurveyId = 1162)
+ageDat<-age_length_summary(SurveyEffortData,OutputType = "Table")
+age_length_summary(SurveyEffortData,OutputType = "Figure")
 
 
 ###############################################################################################################################
