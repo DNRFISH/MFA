@@ -31,31 +31,24 @@ invisible(lapply(list.files("./code/", full.names = TRUE,recursive = T), source)
 ###############################################################################################################################
 ##Read in a single table (for testing)
 ###############################################################################################################################
-ModuleData <- tbl(con, "ModuleData")%>%
-  collect()
-ModuleDataCatchBySpecies <- tbl(con, "ModuleDataCatchBySpecies")%>%
-  collect()
-SurveyEffortCatchByEffortSpecies <- tbl(con, "SurveyEffortCatchByEffortSpecies")%>%
-  collect()
-
-SurveyGear <- tbl(con, "SurveyEffortDetail")%>%
-  left_join(tbl(con, "Gear")%>%select(GearId,GearType),by = "GearId")%>%
-  collect()
-SurveyGearNAs<-SurveyGear%>%filter(is.na(EffortTotalQuantity))
-table(SurveyGearNAs$GearType)
-
-GearEffortMeasurement <- tbl(con, "GearEffortMeasurement")%>%
-  #left_join(tbl(con, "Gear")%>%select(GearId,GearType),by = "GearId")%>%
+Effort<-tbl(con, "SurveyEffort") %>%
+  select(SurveyId,SurveyEffortId,SurveyEffortKey,ModuleId)%>%
+  left_join(tbl(con, "SurveyEffortDetail"),by="SurveyEffortId")%>%
+  left_join(tbl(con, "Gear") %>%select(GearId, GearType),by="GearId")%>%
+  select(SurveyId,SurveyEffortId,SurveyEffortKey,ModuleId, BeginningEffortTimestamp, EndingEffortTimestamp, GearType,EffortNumberofGearUsed, EffortTotalQuantity, 
+         EffortTotalMeasurement, EffortAlternateQuantity, EffortAlternateMeasurement)%>%
+  filter(SurveyId==13601)%>%
   collect()
 
 ###############################################################################################################################
-##Query survey/effort data
+##Query data
 ###############################################################################################################################
 #Read in Data
 #single survey
+FISH_Data <- FISH_query(con,QueryType = "Survey",SurveyId = 805)
 FISH_Data <- FISH_query(con,QueryType = "Efforts",SurveyId = 805)
-#single survey with an effort with zero captures
-FISH_Data <- FISH_query(con,QueryType = "Efforts",SurveyId = 13601)
+FISH_Data <- FISH_query(con,QueryType = "Catch",SurveyId = 805)
+
 #all surveys from a waterbody
 FISH_Data <- FISH_query(con,QueryType = "Survey",WaterBodyName = "Lake Orion")
 FISH_Data <- FISH_query(con,QueryType = "Efforts",SurveyId = 16923)
@@ -63,13 +56,11 @@ FISH_Data <- FISH_query(con,QueryType = "Efforts",SurveyId = 16923)
 #all SnT surveys from 2025
 FISH_Data <- FISH_query(con,QueryType = "Survey",SurveyPurpose = "Status & Trends",Year=2025)
 
+#all surveys that caught bowfin in 2025
+FISH_Data <- FISH_query(con,QueryType = "Survey",Species="Bowfin",Year=2025)
+FISH_Data <- FISH_query(con,QueryType = "Efforts",Species="Bowfin",Year=2025)
+FISH_Data <- FISH_query(con,QueryType = "Catch",Species="Bowfin",Year=2025)
 
-###############################################################################################################################
-##Catch by effort query
-###############################################################################################################################
-#single survey
-catchData <- catchByEffort(FISH_query(con,QueryType = "Efforts",SurveyId = 805))
-catchData <- catchByEffort(FISH_query(con,QueryType = "Efforts",SurveyId = 1162))
 
 ###############################################################################################################################
 ##Catch Summaries
@@ -78,7 +69,7 @@ catchData <- catchByEffort(FISH_query(con,QueryType = "Efforts",SurveyId = 1162)
 #Lake Orion, 2023
 #total count = 1005 LMB for both
 #age count = 361 for both (can use this later for age data test)
-catchSum <- catch_summary_table(catchByEffort(FISH_query(con,QueryType = "Efforts",SurveyId = 1162)))
+catchSum <- catch_summary_table(FISH_query(con,QueryType = "Catch",SurveyId = 1162))
 scaleEnvelopeTest <- tbl(con, "ModuleDataScaleEnvelope") %>%
   select(SurveyId,ModuleDataId,EnvelopeSerialNumber,SpeciesStrainId,TotalLengthEntered)%>%
   left_join(tbl(con, "SpeciesStrain") %>%
@@ -89,7 +80,9 @@ scaleEnvelopeTest <- tbl(con, "ModuleDataScaleEnvelope") %>%
 #Lake Sixteen, 2024 - see issue #4 
 #catch summary totals and length ranges are OK, but avg lengths are off; issue in FCS/FISH
 #confirm totals: 5 NOP in catch summary, 4 in age data- was there 5 or 9 total caught? - confirmed
-catchSum <-  catch_summary_table(catchByEffort(FISH_query(con,QueryType = "Efforts",SurveyId = 805)))
+catchSum <- catch_summary_table(FISH_query(con,QueryType = "Catch",SurveyId = 805))
+catchSum <- catch_summary_table(FISH_query(con,QueryType = "Catch",GearType = "LMFYKE",SurveyId = 805))
+
 scaleEnvelopeTest <- tbl(con, "ModuleDataScaleEnvelope") %>%
   select(SurveyId,ModuleDataId,EnvelopeSerialNumber,SpeciesStrainId,TotalLengthEntered)%>%
   left_join(tbl(con, "SpeciesStrain") %>%
