@@ -152,7 +152,7 @@ catchByEffort <- function(FISH_Data,Special_Legal_Sizes = NULL) {
         ),2),
         LengthMinimum = min(lengthEst, na.rm = TRUE),
         LengthMaximum = max(lengthEst, na.rm = TRUE),
-        N_legal = sum(count[lengthEst >= LegalSize], na.rm = TRUE),
+        N_legal = sum(count[lengthEst >= LegalSize], na.rm = FALSE), #want this to stay NA if no legal size specified
         CatchTable = "InchGroup",
         .groups = "drop"
       )
@@ -184,7 +184,7 @@ catchByEffort <- function(FISH_Data,Special_Legal_Sizes = NULL) {
     #     LengthAverage = round(mean(TotalLengthEntered, na.rm = TRUE),2),
     #     LengthMinimum = min(TotalLengthEntered, na.rm = TRUE),
     #     LengthMaximum = max(TotalLengthEntered, na.rm = TRUE),
-    #     N_legal = sum(count[TotalLengthEntered >= LegalSize], na.rm = TRUE),
+    #     N_legal = sum(count[TotalLengthEntered >= LegalSize], na.rm = FALSE), #want this to stay NA if no legal size specified
     #     CatchTable = "ScaleEnvelope",
     #     .groups = "drop"
     #   )
