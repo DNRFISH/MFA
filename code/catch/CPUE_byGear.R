@@ -1,9 +1,9 @@
 #' CPUE_byGear
 #'
-#' Creates summary table of CPUE by gear and species
-
+#' Creates summary table of CPUE by survey, gear, and species
 #'
 #' @param CatchEffortData "Catch" data query from FISH_query function
+#' @param OutputType "Table" or "Figure" (default Table)
 #' @return Summary Table or Figure
 #' @export
 #'
