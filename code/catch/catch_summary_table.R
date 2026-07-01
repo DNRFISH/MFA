@@ -7,6 +7,14 @@
 #' @return Summary Table
 #' @export
 #'
+#' @examples
+#' 
+#' catchData<-FISH_query(con,QueryType = "Catch",SurveyId = 1162)
+#' catchSum <- catch_summary_table(catchData)
+#' 
+#' catchSum <- catch_summary_table(FISH_query(con,QueryType = "Catch",SurveyId = 805))
+
+
 
 #NOTE: avg length doesn't currently line up with SFRs because of data issues identifed during FISH development
 
@@ -25,13 +33,15 @@ catch_summary_table <- function(catchData) {
   
   outTab<-catchData%>%
     filter(!is.na(TotalNumberCaught))%>% #remove efforts with no catches
-    group_by(SurveyId,Species)%>%
+    mutate(w = TotalNumberCaught) %>%
+    group_by(SurveyId, Species) %>%
     summarise(
-      TotalNumberCaught=sum(TotalNumberCaught,na.rm = T),
+      TotalNumberCaught = sum(w, na.rm = TRUE),
+      LengthAverage = round(sum(LengthAverage * w, na.rm = TRUE) / sum(w, na.rm = TRUE),2),
       LengthMinimum = min(LengthMinimum, na.rm = TRUE),
       LengthMaximum = max(LengthMaximum, na.rm = TRUE),
       N_legal = sum(N_legal, na.rm = TRUE),
-      PctLegal = round(100 * N_legal /TotalNumberCaught,0),
+      PctLegal = round(100 * N_legal / TotalNumberCaught, 0),
       .groups = "drop"
     )
   
