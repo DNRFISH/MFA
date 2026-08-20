@@ -16,11 +16,11 @@ age_length_summary<-function(SurveyEffortData,OutputType="RawData"){
   # #count the number of fish (SurveyId+EnvelopeSerialNumber) with multiple entries, subset out
   # #based on the initial reveiw there are 2,940 with multiple entires, but they are all identical age and length.. seems suspicious? #8
   # multiEntries <- tbl(con, "ModuleDataScaleEnvelope") %>%
-  #   select(SurveyId, EnvelopeSerialNumber, TotalLengthEntered, AgeClassId) %>%
+  #   select(SurveyId, EnvelopeSerialNumber, TotalLengthInInches, AgeClassId) %>%
   #   group_by(SurveyId, EnvelopeSerialNumber) %>%
   #   summarise(
   #     numEntry = n(),
-  #     n_lengths = n_distinct(TotalLengthEntered),
+  #     n_lengths = n_distinct(TotalLengthInInches),
   #     n_ages=n_distinct(AgeClassId),
   #     .groups = "drop"
   #   ) %>%
@@ -43,7 +43,7 @@ age_length_summary<-function(SurveyEffortData,OutputType="RawData"){
     collect()%>%
     group_by(SurveyId, EnvelopeSerialNumber) %>%
     summarise(
-      n_lengths = n_distinct(TotalLengthEntered, na.rm = TRUE),
+      n_lengths = n_distinct(TotalLengthInInches, na.rm = TRUE),
       .groups = "drop"
     )%>%
     filter(n_lengths>1)
@@ -52,23 +52,23 @@ age_length_summary<-function(SurveyEffortData,OutputType="RawData"){
     stop(paste0("ERROR: Inconsistent lengths detected. Check age/length data."))
   }
   
-  #query data; currently set up to do mode by SurveyId,EnvelopeSerialNumber,Species,Strain,and TotalLengthEntered
+  #query data; currently set up to do mode by SurveyId,EnvelopeSerialNumber,Species,Strain,and TotalLengthInInches
   #circle back to this once we confirm the age data (#8)
   scaleEnvelope <- tbl(con, "ModuleDataScaleEnvelope") %>%
     filter(SurveyId %in% !!SurveyIds) %>% 
-    filter(!is.na(TotalLengthEntered))%>% #do we want to filter these? revist after age data confirmation
-    select(SurveyId,ModuleDataId,EnvelopeSerialNumber,SpeciesStrainId,TotalLengthEntered,AgeClassId)%>%
+    filter(!is.na(TotalLengthInInches))%>% #do we want to filter these? revist after age data confirmation
+    select(SurveyId,ModuleDataId,EnvelopeSerialNumber,SpeciesStrainId,TotalLengthInInches,AgeClassId)%>%
     left_join(tbl(con, "AgeClass")%>%
                 select(AgeClassId,Descriptions),by = "AgeClassId")%>%
     left_join(tbl(con, "ModuleData") %>%
                 select(ModuleId,ModuleDataId),by = "ModuleDataId")%>%
     left_join(tbl(con, "SpeciesStrain") %>%
                 select(SpeciesStrainId,Species,Strain),by = "SpeciesStrainId")%>%
-    group_by(SurveyId,EnvelopeSerialNumber,Species,Strain,TotalLengthEntered,Descriptions)%>%
+    group_by(SurveyId,EnvelopeSerialNumber,Species,Strain,TotalLengthInInches,Descriptions)%>%
     summarise(n = n(), .groups = "drop") %>%
-    group_by(SurveyId,EnvelopeSerialNumber,Species,Strain,TotalLengthEntered)%>%
+    group_by(SurveyId,EnvelopeSerialNumber,Species,Strain,TotalLengthInInches)%>%
     slice_max(n, n = 1, with_ties = FALSE) %>%
-    select(SurveyId,EnvelopeSerialNumber,Species,Strain,Age = Descriptions,TotalLengthEntered)%>%
+    select(SurveyId,EnvelopeSerialNumber,Species,Strain,Age = Descriptions,TotalLengthInInches)%>%
     collect()
   
   if(OutputType=="RawData"){
@@ -80,11 +80,11 @@ age_length_summary<-function(SurveyEffortData,OutputType="RawData"){
   #Simple mean
   meanAgeDat<-scaleEnvelope%>%
     group_by(SurveyId,Species,Age)%>%
-    summarise(N=length(TotalLengthEntered),
-              Mean_Length=round(mean(TotalLengthEntered),2),
-              Min_length=min(TotalLengthEntered),
-              Max_Length=max(TotalLengthEntered),
-              SD_Length=round(sd(TotalLengthEntered),2),
+    summarise(N=length(TotalLengthInInches),
+              Mean_Length=round(mean(TotalLengthInInches),2),
+              Min_length=min(TotalLengthInInches),
+              Max_Length=max(TotalLengthInInches),
+              SD_Length=round(sd(TotalLengthInInches),2),
               .groups = "drop")
   
   
@@ -114,10 +114,10 @@ age_length_summary<-function(SurveyEffortData,OutputType="RawData"){
       summarize(N.caught=sum(NumberCaughtUnmarked),.groups = "drop")#only use unmarked here to avoid double counting fish
       
     alk_prop<-scaleEnvelope%>%
-      mutate(InchGroup=floor(TotalLengthEntered))%>%
+      mutate(InchGroup=floor(TotalLengthInInches))%>%
       group_by(SurveyId,Species,InchGroup,Age)%>%
       summarize(N.aged=n(),
-                meanLength=mean(TotalLengthEntered),
+                meanLength=mean(TotalLengthInInches),
                 .groups = "drop")%>%
       group_by(SurveyId, Species, InchGroup) %>%
       mutate(prop = N.aged / sum(N.aged)) %>%
