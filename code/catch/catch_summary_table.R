@@ -1,24 +1,32 @@
-#' catch_summary_table
+#' catchSummary
 #'
-#' Creates summary table of catches by species per survey
-
+#' Summarizes catch data returned by [FISH_query(QueryType=="Catch")] to produce one row
+#' for each survey and species combination. The summary includes total
+#' catch, weighted average length, minimum and maximum length, and the
+#' number and percentage of fish meeting the legal minimum size limit.
 #'
-#' @param catchData Data query from FISH_query function
-#' @return Summary Table
-#' @export
+#' @param catchData A data frame returned by [FISH_query()] with
+#'   `QueryType = "Catch"`. The data must contain `SurveyId`, `Species`,
+#'   `GearType`, `TotalNumberCaught`, `LengthAverage`, `LengthMinimum`,
+#'   `LengthMaximum`, and `N_legal`.
+#'   
+#' @return A data frame with one row per survey and species combination.
+#'   Columns include total catch, weighted average length, minimum and
+#'   maximum length, number of legal fish, and percentage of fish that
+#'   meet the legal minimum size limit.
 #'
 #' @examples
-#' 
 #' catchData<-FISH_query(con,QueryType = "Catch",SurveyId = 1162)
 #' catchSum <- catch_summary_table(catchData)
-#' 
 #' catchSum <- catch_summary_table(FISH_query(con,QueryType = "Catch",SurveyId = 805))
+#' 
+#' @export
 
 
 
 #NOTE: avg length doesn't currently line up with SFRs because of data issues identifed during FISH development
 
-catch_summary_table <- function(catchData) {
+catchSummary <- function(catchData) {
   
   if(!"TotalNumberCaught" %in% names(catchData)){
     stop("No catch data included. Need to provide catch data from FISH_query")
