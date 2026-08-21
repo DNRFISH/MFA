@@ -91,6 +91,12 @@ scaleEnvelopeTest <- tbl(con, "ModuleDataScaleEnvelope") %>%
   collect()
 
 ###############################################################################################################################
+##Detections by Year
+###############################################################################################################################
+catchData <- FISH_query(con,QueryType = "Catch",WaterBodyName = "Lake Orion")
+detectionByYearSum<-detectionByYear(catchData)
+
+###############################################################################################################################
 ##Length frequency and RSD-- have gone back and forth on whether this should be a standalone function or repeated code
 ###############################################################################################################################
 lengthFreqData <- lengthFreqByEffort(SurveyEffortData=FISH_query(con,QueryType ="Efforts",SurveyId = 805),OutputType="Table")
