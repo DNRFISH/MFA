@@ -9,7 +9,7 @@
 #'
 #' @details Only pulls from ModuleDataCatchSampleByInchGroup and ModuleDataScaleEnvelope because ModuleDataCatchBySpecies doesn't have inch groups
 
-lengthFreqByEffort<-function(SurveyEffortData){
+lengthFreqByEffort<-function(SurveyEffortData,OutputType="Table"){
   
   #pull moduleIds from the data
   modIds <- unique(SurveyEffortData$ModuleId)
