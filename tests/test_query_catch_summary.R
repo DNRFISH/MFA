@@ -91,10 +91,10 @@ scaleEnvelopeTest <- tbl(con, "ModuleDataScaleEnvelope") %>%
   collect()
 
 ###############################################################################################################################
-##Length frequency -- have gone back and forth on whether this should be a standalone function or repeated code
+##Length frequency and RSD-- have gone back and forth on whether this should be a standalone function or repeated code
 ###############################################################################################################################
-lengthFreq <- lengthFreqByEffort(FISH_Data=FISH_query(con,QueryType = "Catch",SurveyId = 805))
-
+lengthFreqData <- lengthFreqByEffort(SurveyEffortData=FISH_query(con,QueryType ="Efforts",SurveyId = 805),OutputType="Table")
+RSDsum<-RSD(lengthFreqData)
 
 ###############################################################################################################################
 ##Age-length Summaries  need to update these after the query functions are updated
