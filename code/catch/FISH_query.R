@@ -5,7 +5,7 @@
 #' Filters allow you to filter by waterbody, surveyID, survey purpose, year, or gear type
 #'
 #' @param con Connection to FISHub
-#' @param QueryType Specify "Survey" or "Efforts" (Default is Survey)
+#' @param QueryType Specify "Survey", "Efforts", or "Catch" (Default is Survey)
 #' @param MDNRID MDNRID to be used in query
 #' @param WaterBodyName WaterBodyName to be used in query
 #' @param SurveyId SurveyId to be used in query
