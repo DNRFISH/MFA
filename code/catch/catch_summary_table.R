@@ -1,9 +1,10 @@
 #' catchSummary
 #'
-#' Summarizes catch data returned by [FISH_query(QueryType=="Catch")] to produce one row
+#' Summarizes catch data returned by [FISH_query()] to produce one row
 #' for each survey and species combination. The summary includes total
 #' catch, weighted average length, minimum and maximum length, and the
-#' number and percentage of fish meeting the legal minimum size limit.
+#' number and percentage of fish meeting the statewide or other specified
+#' legal minimum size limit.
 #'
 #' @param catchData A data frame returned by [FISH_query()] with
 #'   `QueryType = "Catch"`. The data must contain `SurveyId`, `Species`,
@@ -13,12 +14,11 @@
 #' @return A data frame with one row per survey and species combination.
 #'   Columns include total catch, weighted average length, minimum and
 #'   maximum length, number of legal fish, and percentage of fish that
-#'   meet the legal minimum size limit.
+#'   meet  statewide or other specified legal minimum size limit.
 #'
 #' @examples
-#' catchData<-FISH_query(con,QueryType = "Catch",SurveyId = 1162)
-#' catchSum <- catch_summary_table(catchData)
-#' catchSum <- catch_summary_table(FISH_query(con,QueryType = "Catch",SurveyId = 805))
+#' catchData<-FISH_query(con,QueryType = "Catch",SurveyId = 805)
+#' catchSum <- catchSummary(catchData)
 #' 
 #' @export
 
