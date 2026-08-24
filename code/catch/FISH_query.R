@@ -4,22 +4,124 @@
 #' Reads in data from FISHub dynamically to reduce memory burden. Can specify whether to query survey or efforts.
 #' Filters allow you to filter by waterbody, surveyID, survey purpose, year, or gear type
 #'
-#' @param con Connection to FISHub
-#' @param QueryType Specify "Survey", "Efforts", or "Catch" (Default is Survey)
-#' @param MDNRID MDNRID to be used in query
-#' @param WaterBodyName WaterBodyName to be used in query
-#' @param SurveyId SurveyId to be used in query
-#' @param SurveyPurpose SurveyPurpose to be used in query. Options include: "Creel Census","Discretionary Survey","Fish Community",
-#' "General Survey","Limnology","Management Evaluation","Population Estimate","Population Reduction","Recruitment Evaluation",
-#' "Recruitment v Evaluation","Research Project","Special Study","Species Evaluation","Status & Trends","Stocking Evaluation".
-#' @param Year Year to be used in query
-#' @param GearType GearType to be used in query
-#' @param Species Species name to be used in query
+#' @param con A DBI connection to the FISHub database. The connection must
+#'   be active when function is called.
+#'
+#' @param QueryType Character string specifying the type of data to return.
+#'   Must be one of `"Survey"`, `"Efforts"`, or `"Catch"`. Defaults to
+#'   `"Survey"`.
+#'
+#' @param MDNRID Character or numeric vector specifying one or more MDNRIDs
+#'   to include in the query. If `NULL`, data for all waterbodies are
+#'   included, subject to the other filters.
+#'
+#' @param WaterBodyName Character vector specifying one or more waterbody
+#'   names to include in the query. Names must match the corresponding
+#'   `WaterBodyName` values in FISHub. If `NULL`, all waterbodies are
+#'   included, subject to the other filters.
+#'
+#' @param SurveyId Numeric vector specifying one or more Survey IDs to
+#'   include in the query. If `NULL`, all surveys matching the other
+#'   filters are included.
+#'
+#' @param SurveyPurpose Character vector specifying one or more survey
+#'   purposes to include in the query. Values must match the survey purpose
+#'   descriptions in FISHub. Available survey purposes include
+#'   `"Creel Census"`, `"Discretionary Survey"`, `"Fish Community"`,
+#'   `"General Survey"`, `"Limnology"`, `"Management Evaluation"`,
+#'   `"Population Estimate"`, `"Population Reduction"`,
+#'   `"Recruitment Evaluation"`, `"Recruitment v Evaluation"`,
+#'   `"Research Project"`, `"Special Study"`, `"Species Evaluation"`,
+#'   `"Status & Trends"`, and `"Stocking Evaluation"`. If `NULL`, surveys
+#'   of all purposes are included.
+#'
+#' @param Year Numeric vector specifying one or more years to include in
+#'   the query. The year is determined from `SurveyBeginTimestamp`. If
+#'   `NULL`, surveys from all years are included, subject to the other
+#'   filters.
+#'
+#' @param GearType Character vector specifying one or more gear types to
+#'   include in the query. If `NULL`, efforts using all gear types are
+#'   included. When specified, only surveys and efforts associated with the
+#'   selected gear types are returned.
+#'
+#' @param Species Character vector specifying one or more species names to
+#'   include in the query. Species names must match the corresponding
+#'   species values in FISHub. If `NULL`, records for all species are
+#'   included. When specified, the query returns only surveys and efforts
+#'   associated with catch records for the selected species; efforts with
+#'   no recorded catch of the selected species will therefore be excluded.
 #' 
 #' @details
-#' Tables Used: WaterBody, Survey, SurveyPurpose, SurveyStatus, SurveyEffort, SurveyEffortDetails, and Gear
+#' `FISH_query()` dynamically queries FISHub using the supplied filters and
+#' collects only the resulting records into R. This approach is intended to
+#' reduce memory use compared with retrieving complete database tables.
+#'
+#' The query combines information from the `WaterBody`, `Survey`,
+#' `SurveyPurpose`, `SurveyStatus`, `SurveyEffort`, `SurveyEffortDetail`,
+#' and `Gear` tables. Catch information is subsequently added using
+#' [catchByEffort()].
+#'
+#' All filter arguments are optional. When multiple filter values are
+#' supplied, records matching any of the specified values are retained
+#' within each filter, while different filters are applied simultaneously.
+#' For example, specifying multiple `SurveyId` values returns data for any
+#' of those surveys, while also applying any specified `Year` or `GearType`
+#' filters.
+#'
+#' The `QueryType` argument determines the level of data returned. `"Survey"`
+#' returns one row per unique survey, `"Efforts"` returns survey effort-level
+#' records, and `"Catch"` returns the combined survey, effort, and catch data.
+#'
+#' When `GearType` is specified, only surveys and efforts associated with the
+#' specified gear types are retained. When `Species` is specified, only
+#' surveys and efforts with recorded catch of the specified species are
+#' retained. Consequently, specifying `Species` excludes efforts in which
+#' the selected species was not caught or was not recorded. This should be
+#' considered when using the returned data to calculate catch rates or CPUE.
+#'
+#' If no records match the specified filters, an empty data frame is returned
+#' and a message is printed indicating that no data were found.
 #' 
-#' @return A merged data frame with data.
+#' @return
+#' A data frame containing the requested FISHub data. The structure of the
+#' returned data depends on `QueryType`:
+#'
+#' \itemize{
+#'   \item `"Survey"`: One row per unique survey, including waterbody,
+#'     survey purpose and status, survey dates, and survey-level attributes.
+#'   \item `"Efforts"`: Survey- and effort-level records, including survey
+#'     information, gear type, effort dates, number of gears used, and
+#'     effort quantities and measurements.
+#'   \item `"Catch"`: Combined survey-, effort-, and catch-level data,
+#'     including species and catch information.
+#' }
+#'
+#' The returned data frame contains only records matching the supplied
+#' filter arguments. If no records match the filters, an empty data frame
+#' is returned.
+#' 
+#' @examples
+#' con <- dbConnect(odbc(),
+#' Driver = "ODBC Driver 17 for SQL Server",
+#' Server = "DNRSQLWEB",
+#' Database = "FISHReport",
+#' Trusted_Connection = "yes")
+#' 
+#' #single survey; note different query types
+#' FISH_Data <- FISH_query(con,QueryType = "Survey",SurveyId = 805)
+#' FISH_Data <- FISH_query(con,QueryType = "Efforts",SurveyId = 805)
+#' FISH_Data <- FISH_query(con,QueryType = "Catch",SurveyId = 805)
+#' 
+#' #all surveys from a waterbody
+#' FISH_Data <- FISH_query(con,QueryType = "Survey",WaterBodyName = "Lake Orion")
+#' 
+#' #all SnT surveys from 2025
+#' FISH_Data <- FISH_query(con,QueryType = "Survey",SurveyPurpose = "Status & Trends",Year=2025)
+#' 
+#' #all surveys that caught bowfin in 2025
+#' FISH_Data <- FISH_query(con,QueryType = "Survey",Species="Bowfin",Year=2025)
+#' 
 #' 
 #' @export
 #'
@@ -35,10 +137,15 @@ FISH_query <- function(con,
                        Species=NULL) {
   
   
+  #check to confirm query type is valid
+  if (!QueryType %in% c("Survey", "Efforts", "Catch")) {
+    stop("QueryType must be one of 'Survey', 'Efforts', or 'Catch'.")
+  }
+  
   # --- Begin query ---
   #WaterBody
   WaterBody<-tbl(con, "WaterBody") %>%
-    filter(IsActive==T)%>% #filter out inactive rows to avoid duplicates Issue #1
+    filter(IsActive==TRUE)%>% #filter out inactive rows to avoid duplicates Issue #1
     select(MDNRID,WaterBodyName)%>%
     distinct(MDNRID, WaterBodyName, .keep_all = TRUE) #*should we carry over old waterbody ID for unlocated ones?
   if(!is.null(MDNRID)){
@@ -77,7 +184,7 @@ FISH_query <- function(con,
               EffortTotalMeasurement, EffortAlternateQuantity, EffortAlternateMeasurement)
 
   if(!is.null(GearType)){
-    print("Note: query only retruns surveys/efforts that had the specified gears.")
+    message("Note: query only retruns surveys/efforts that had the specified gears.")
     Effort<-Effort%>%filter(.data$GearType %in% .env$GearType)
   }
   
@@ -92,7 +199,7 @@ FISH_query <- function(con,
   surveyEffortDat<-collect(surveyEffortDat)
 
   #read in catch data
-  catchDat<-catchByEffort(surveyEffortDat)
+  catchDat<-catchByEffort(con,surveyEffortDat)
   
   #join to surveyEffort data
   allDat<-surveyEffortDat%>%
@@ -113,13 +220,13 @@ FISH_query <- function(con,
   if (QueryType=="Catch") {
     outDat<-allDat
     if(!is.null(Species)){
-      print("Note: query only retruns surveys/efforts that caught the specified species. It is missing efforts with no capture. Be cautious when calculating CPUE or use CPUE function .")
+      message("Note: query only returns surveys/efforts that caught the specified species. It is missing efforts with no capture. Be cautious when calculating CPUE or use CPUE function .")
     }
   }
   
   #print if no data found
   if(nrow(outDat)==0){
-    print("No data found. Confirm spelling and data is in FISHub. Contact MFA team for assistance.")
+    message("No data found. Confirm spelling and data is in FISHub. Contact MFA team for assistance if you believe there are missing data.")
   }
   return(outDat)
 }
