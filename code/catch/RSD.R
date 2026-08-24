@@ -1,13 +1,135 @@
 #' RSD
 #'
-#' Creates summary table or graph of RSD values based on Gabelhouse length categories
+#' Calculate relative stock density (RSD) metrics
 #'
-#' @param lengthFreqData Data query from lengthFreqByEffort function
-#' @return Summary Table
+#' Calculates proportional stock density (PSD) and relative stock density
+#' (RSD) metrics using Gabelhouse length categories. The function takes
+#' length-frequency data, assigns each length group to a Gabelhouse category,
+#' and summarizes the number and proportion of fish in each category by
+#' survey and species.
+#'
+#' The Gabelhouse categories used are Stock, Quality, Preferred, Memorable,
+#' and Trophy. Only species included in the Gabelhouse reference-length
+#' dataset are included in the returned summary.
+#'
+#' PSD represents the percentage of fish at or above the Quality length
+#' relative to all fish at or above the Stock length. RSD-P, RSD-M, and RSD-T
+#' represent the percentage of stock-length fish that are at or above the
+#' Preferred, Memorable, and Trophy lengths, respectively.
+#'
+#' @param lengthFreqData A data frame containing length-frequency data,
+#'   typically returned by \code{\link{lengthFreqByEffort}}. The data must
+#'   contain at least the following columns: \code{SurveyId},
+#'   \code{Species}, \code{InchGroup}, and \code{TotalNumberCaught}.
+#'   \code{InchGroup} is used to assign fish to Gabelhouse length categories,
+#'   and \code{TotalNumberCaught} provides the number of fish in each length
+#'   group.
+#'
+#' @return A data frame containing RSD summaries by survey and species. The
+#'   returned data frame contains the following columns:
+#'   \describe{
+#'     \item{SurveyId}{FISHub survey identifier.}
+#'     \item{Species}{Common species name. Only species with Gabelhouse
+#'       reference lengths in the package dataset are included.}
+#'     \item{N.Stock}{Number of fish classified as Stock length: fish at or
+#'       above the Stock length but below the Quality length.}
+#'     \item{N.Quality}{Number of fish classified as Quality length: fish at
+#'       or above the Quality length but below the Preferred length.}
+#'     \item{N.Preferred}{Number of fish classified as Preferred length:
+#'       fish at or above the Preferred length but below the Memorable length.}
+#'     \item{N.Memorable}{Number of fish classified as Memorable length:
+#'       fish at or above the Memorable length but below the Trophy length.}
+#'     \item{N.Trophy}{Number of fish classified as Trophy length: fish at
+#'       or above the Trophy length.}
+#'     \item{PSD}{Proportional stock density, calculated as the percentage
+#'       of fish at or above the Quality length among all fish at or above
+#'       the Stock length.}
+#'     \item{RSD.p}{Relative stock density Preferred, calculated as the
+#'       percentage of fish at or above the Preferred length among all fish
+#'       at or above the Stock length.}
+#'     \item{RSD.m}{Relative stock density Memorable, calculated as the
+#'       percentage of fish at or above the Memorable length among all fish
+#'       at or above the Stock length.}
+#'     \item{RSD.t}{Relative stock density Trophy, calculated as the
+#'       percentage of fish at or above the Trophy length among all fish at
+#'       or above the Stock length.}
+#'   }
+#'
+#' @details
+#' Gabelhouse length categories are assigned using species-specific reference
+#' lengths stored in the package's \code{Gabelhouse_RSD_lengths.csv} data
+#' file. Each inch group is assigned to the highest applicable category based
+#' on its length.
+#'
+#' The categories are hierarchical:
+#'
+#' \itemize{
+#'   \item \strong{Stock}: fish at or above the Stock length but below the
+#'     Quality length.
+#'   \item \strong{Quality}: fish at or above the Quality length but below
+#'     the Preferred length.
+#'   \item \strong{Preferred}: fish at or above the Preferred length but
+#'     below the Memorable length.
+#'   \item \strong{Memorable}: fish at or above the Memorable length but
+#'     below the Trophy length.
+#'   \item \strong{Trophy}: fish at or above the Trophy length.
+#' }
+#'
+#' Fish below the species-specific Stock length are not included in any RSD
+#' category and are therefore excluded from the denominators used to
+#' calculate PSD and RSD metrics.
+#'
+#' PSD is calculated as:
+#'
+#' \deqn{
+#' PSD = \frac{N_{Quality} + N_{Preferred} + N_{Memorable} + N_{Trophy}}
+#' {N_{Stock} + N_{Quality} + N_{Preferred} + N_{Memorable} + N_{Trophy}}
+#' \times 100
+#' }
+#'
+#' RSD-P is calculated as:
+#'
+#' \deqn{
+#' RSD-P = \frac{N_{Preferred} + N_{Memorable} + N_{Trophy}}
+#' {N_{Stock} + N_{Quality} + N_{Preferred} + N_{Memorable} + N_{Trophy}}
+#' \times 100
+#' }
+#'
+#' RSD-M is calculated as:
+#'
+#' \deqn{
+#' RSD-M = \frac{N_{Memorable} + N_{Trophy}}
+#' {N_{Stock} + N_{Quality} + N_{Preferred} + N_{Memorable} + N_{Trophy}}
+#' \times 100
+#' }
+#'
+#' RSD-T is calculated as:
+#'
+#' \deqn{
+#' RSD-T = \frac{N_{Trophy}}
+#' {N_{Stock} + N_{Quality} + N_{Preferred} + N_{Memorable} + N_{Trophy}}
+#' \times 100
+#' }
+#'
+#' All proportional metrics are rounded to the nearest whole percentage.
+#'
+#' Fish below the Stock length and species without a corresponding
+#' Gabelhouse reference length are excluded from the RSD calculations.
+#'
+#' @examples
+#' \dontrun{
+#' # Obtain length-frequency data
+#' lengthFreqData <- lengthFreqByEffort(
+#'   con = con,
+#'   effortData = effortData,
+#'   OutputType = "Table"
+#' )
+#'
+#' # Calculate RSD metrics
+#' rsd_summary <- RSD(lengthFreqData)
+#' }
+#'
 #' @export
-#'
-#' @details N.Stock means # of fish >=stock length but < Quality length. Total N.Stock = N.Stock+N.Quality+N.Preferred+N.Memorable+N.Trophy
-
 
 RSD<-function(lengthFreqData){
   
