@@ -1,4 +1,4 @@
-#' CPUEbyGear
+#' CPUE_byGear
 #'
 #' Calculate catch per unit effort (CPUE) by gear and species
 #'
@@ -117,7 +117,7 @@
 #'   SurveyId = 1162
 #' )
 #'
-#' CPUE <- CPUEbyGear(catchData)
+#' CPUE <- CPUE_byGear(catchData)
 #'
 #' # Calculate CPUE for multiple Status & Trends surveys
 #' catchData <- FISH_query(
@@ -127,10 +127,10 @@
 #'   Year = 2025
 #' )
 #'
-#' CPUE <- CPUEbyGear(catchData)
+#' CPUE <- CPUE_byGear(catchData)
 #'
 #' # Return a CPUE figure instead of a table
-#' CPUE_plot <- CPUEbyGear(
+#' CPUE_plot <- CPUE_byGear(
 #'   catchData,
 #'   OutputType = "Figure"
 #' )
@@ -139,7 +139,7 @@
 #' @export
 
 
-CPUEbyGear<-function(catchData,OutputType="Table"){
+CPUE_byGear<-function(catchData,OutputType="Table"){
   
   if (!OutputType %in% c("Table", "Figure")) {
     stop("OutputType must be either 'Table' or 'Figure'.")
