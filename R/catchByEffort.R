@@ -126,15 +126,18 @@
 #' catch_summary <- catchByEffort(con = con,effortData = effortData)
 #'
 #' # Override legal sizes for species with waterbody-specific regulations
-#' catch_summary <- catchByEffort(con = con,effortData = effortData,Special_Legal_Sizes = c("Largemouth Bass" = 10,"Brook Trout" = 12))
+#' catch_summary <- catchByEffort(
+#' con = con,
+#' effortData = effortData,
+#' Special_Legal_Sizes = c("Largemouth Bass" = 10,"Brook Trout" = 12))
 #' 
 #' #disconnect from database
 #' DBI::dbDisconnect(con)
 #' }
 #'
 #'
-#' @importFrom dplyr tbl filter select left_join mutate coalesce group_by summarise bind_rows
-#' @importFrom magrittr %>%
+#' @importFrom dplyr tbl filter select left_join mutate coalesce group_by summarize bind_rows '%>%'
+#' @importFrom stats weighted.mean
 #' 
 #' @export
 
@@ -234,7 +237,7 @@ catchByEffort <- function(con,effortData,Special_Legal_Sizes = NULL) {
       #add surveyId
       left_join(effortData%>%select(SurveyId,ModuleId),by="ModuleId")%>%
       group_by(SurveyId,ModuleId,SpeciesStrainId) %>%
-      summarise(
+      summarize(
         TotalNumberCaught = sum(TotalNumberCaught, na.rm = TRUE),
         #calculated weighted mean lengths -- need to deal with some species not having length data
         LengthAverage = round({
@@ -280,7 +283,7 @@ catchByEffort <- function(con,effortData,Special_Legal_Sizes = NULL) {
         lengthEst=InchGroup+0.5) %>%
       left_join(legalSizeTibSpeciesStr%>%select(SpeciesStrainId,LegalSize),by="SpeciesStrainId")%>%
       group_by(SurveyId,ModuleId,SpeciesStrainId,LegalSize) %>%
-      summarise(
+      summarize(
         TotalNumberCaught = sum(count, na.rm = TRUE),
         LengthAverage = round(weighted.mean(
           lengthEst,
@@ -313,10 +316,10 @@ catchByEffort <- function(con,effortData,Special_Legal_Sizes = NULL) {
     # scaleEnvelopeSum <- scaleEnvelope %>%
     #   #had to deal with multiple agers- set it up as mean length by serial number
     #   group_by(SurveyId,SpeciesStrainId,EnvelopeSerialNumber)%>%
-    #   summarise(TotalLengthEntered=mean(TotalLengthEntered,na.rm = T), .groups = "drop")%>%
+    #   summarize(TotalLengthEntered=mean(TotalLengthEntered,na.rm = T), .groups = "drop")%>%
     #   left_join(legalSizeTibSpeciesStr%>%select(SpeciesStrainId,LegalSize),by="SpeciesStrainId")%>%
     #   group_by(SurveyId,SpeciesStrainId,LegalSize) %>%
-    #   summarise(
+    #   summarize(
     #     TotalNumberCaught = sum(n(), na.rm = TRUE),
     #     LengthAverage = round(mean(TotalLengthEntered, na.rm = TRUE),2),
     #     LengthMinimum = min(TotalLengthEntered, na.rm = TRUE),

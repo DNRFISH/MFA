@@ -28,8 +28,7 @@
 #' DBI::dbDisconnect(con)
 #' }
 #' 
-#' @importFrom dplyr filter mutate group_by summarise
-#' @importFrom magrittr %>%
+#' @importFrom dplyr filter mutate group_by summarize '%>%'
 #' 
 #' @export
 
@@ -54,7 +53,7 @@ catchSummary <- function(catchData) {
     filter(!is.na(TotalNumberCaught))%>% #remove efforts with no catches
     mutate(w = TotalNumberCaught) %>%
     group_by(SurveyId, Species) %>%
-    summarise(
+    summarize(
       TotalNumberCaught = sum(w, na.rm = TRUE),
       LengthAverage = round(sum(LengthAverage * w, na.rm = TRUE) / sum(w, na.rm = TRUE),2),
       LengthMinimum = min(LengthMinimum, na.rm = TRUE),

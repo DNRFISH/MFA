@@ -177,9 +177,9 @@
 #' DBI::dbDisconnect(con)
 #' }
 #'
-#' @importFrom dplyr tbl filter select left_join group_by summarise slice_max mutate ungroup arrange
+#' @importFrom dplyr tbl filter select left_join group_by summarize slice_max mutate ungroup arrange '%>%'
 #' @importFrom ggplot2 ggplot geom_line aes geom_errorbar facet_wrap theme_classic ylab xlab guides guide_legend
-#' @importFrom magrittr %>%
+#' @importFrom stats sd
 #'
 #' @export
 
@@ -194,7 +194,7 @@ ageLengthSummary<-function(con,effortData,OutputType="Table"){
   # multiEntries <- tbl(con, "ModuleDataScaleEnvelope") %>%
   #   select(SurveyId, EnvelopeSerialNumber, TotalLengthInInches, AgeClassId) %>%
   #   group_by(SurveyId, EnvelopeSerialNumber) %>%
-  #   summarise(
+  #   summarize(
   #     numEntry = n(),
   #     n_lengths = n_distinct(TotalLengthInInches),
   #     n_ages=n_distinct(AgeClassId),
@@ -218,7 +218,7 @@ ageLengthSummary<-function(con,effortData,OutputType="Table"){
     filter(SurveyId %in% !!SurveyIds) %>% 
     collect()%>%
     group_by(SurveyId, EnvelopeSerialNumber) %>%
-    summarise(
+    summarize(
       n_lengths = n_distinct(TotalLengthInInches, na.rm = TRUE),
       .groups = "drop"
     )%>%
@@ -241,7 +241,7 @@ ageLengthSummary<-function(con,effortData,OutputType="Table"){
     left_join(tbl(con, "SpeciesStrain") %>%
                 select(SpeciesStrainId,Species,Strain),by = "SpeciesStrainId")%>%
     group_by(SurveyId,EnvelopeSerialNumber,Species,Strain,TotalLengthInInches,Descriptions)%>%
-    summarise(n = n(), .groups = "drop") %>%
+    summarize(n = n(), .groups = "drop") %>%
     group_by(SurveyId,EnvelopeSerialNumber,Species,Strain,TotalLengthInInches)%>%
     slice_max(n, n = 1, with_ties = FALSE) %>%
     select(SurveyId,EnvelopeSerialNumber,Species,Strain,Age = Descriptions,TotalLengthInInches)%>%
@@ -255,7 +255,7 @@ ageLengthSummary<-function(con,effortData,OutputType="Table"){
   #Simple mean
   meanAgeDat<-scaleEnvelope%>%
     group_by(SurveyId,Species,Age)%>%
-    summarise(N=length(TotalLengthInInches),
+    summarize(N=length(TotalLengthInInches),
               Mean_Length=round(mean(TotalLengthInInches),2),
               Min_length=min(TotalLengthInInches),
               Max_Length=max(TotalLengthInInches),
@@ -303,7 +303,7 @@ ageLengthSummary<-function(con,effortData,OutputType="Table"){
       mutate(relNumber = N.caught * prop,
              relNumber_meanLength=relNumber*meanLength)%>%
        group_by(SurveyId, Species, Age) %>%
-       summarise(
+       summarize(
          Weighted_Mean_Length = round(sum(relNumber_meanLength)/sum(relNumber),2),
          .groups = "drop"
         )

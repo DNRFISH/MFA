@@ -89,8 +89,7 @@
 #' }
 #'
 #'
-#'@importFrom dplyr n_distinct filter mutate group_by summarise
-#'@importFrom magrittr %>%
+#'@importFrom dplyr n_distinct filter mutate group_by summarize '%>%'
 #'
 #' @export
 
@@ -107,7 +106,7 @@ detectionByYear <- function(catchData) {
     filter(!is.na(GearType))%>% #removes limno
     mutate(Year=lubridate::year(SurveyBeginTimestamp))%>%
     group_by(Year,Species)%>%
-    summarise(Detect=as.integer(sum(TotalNumberCaught,na.rm = T)>0),.groups = "drop")%>%
+    summarize(Detect=as.integer(sum(TotalNumberCaught,na.rm = T)>0),.groups = "drop")%>%
     #mutate(Detect="x",Species=as.character(varhandle::unfactor(Species)))%>%
     mutate(Detect="x")%>%
     tidyr::spread(key=Year,value = Detect)%>%
@@ -123,7 +122,7 @@ detectionByYear <- function(catchData) {
     filter(!is.na(GearType))%>%
     mutate(Year=lubridate::year(SurveyBeginTimestamp))%>%
     group_by(Year)%>%
-    summarise(N_Surveys=length(unique(SurveyId)),
+    summarize(N_Surveys=length(unique(SurveyId)),
               N_Efforts=length(unique(paste0(SurveyId,SurveyEffortKey))))%>%
     as.data.frame()%>%
     t()

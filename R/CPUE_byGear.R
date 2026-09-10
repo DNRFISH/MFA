@@ -136,9 +136,8 @@
 #' )
 #' }
 #'
-#' @importFrom dplyr filter mutate if_else case_when select group_by summarise inner_join
+#' @importFrom dplyr filter mutate if_else case_when select group_by summarize inner_join '%>%'
 #' @importFrom ggplot2 ggplot geom_bar aes facet_wrap theme_classic scale_fill_viridis_d xlab ylab labs theme element_text
-#' @importFrom magrittr %>%
 #'   
 #' @export
 
@@ -195,7 +194,7 @@ CPUE_byGear<-function(catchData,OutputType="Table"){
   catchByGear<-catchDataClean%>%
     filter(!is.na(Species))%>%
     group_by(SurveyId,GearType,Species)%>%
-    summarise(TotalNumberCaught=sum(TotalNumberCaught,na.rm = T),.groups = "drop")
+    summarize(TotalNumberCaught=sum(TotalNumberCaught,na.rm = T),.groups = "drop")
   
   #summarize effort data
   effortByGear<-catchDataClean%>%

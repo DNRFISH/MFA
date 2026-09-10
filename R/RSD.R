@@ -136,8 +136,7 @@
 #' 
 #' }
 #'
-#' @importFrom dplyr filter group_by summarise
-#' @importFrom magrittr %>%
+#' @importFrom dplyr filter group_by summarize '%>%'
 #'
 #' @export
 

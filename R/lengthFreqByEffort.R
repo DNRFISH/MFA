@@ -112,9 +112,8 @@
 #' DBI::dbDisconnect(con)
 #' }
 #'
-#' @importFrom dplyr tbl select left_join filter collect mutate group_by summarise bind_rows
+#' @importFrom dplyr tbl select left_join filter collect mutate group_by summarize bind_rows '%>%'
 #' @importFrom ggplot2 ggplot geom_col aes theme_classic facet_wrap labs
-#' @importFrom magrittr %>%
 #' 
 #' @export
 
@@ -143,7 +142,7 @@ lengthFreqByEffort<-function(con,effortData,OutputType="Table"){
       mutate(
         count = NumberCaughtUnmarked) %>% #only use unmarked here to avoid double counting fish
       group_by(SurveyId,ModuleId,SpeciesStrainId,InchGroup) %>%
-      summarise(
+      summarize(
         TotalNumberCaught = sum(count, na.rm = TRUE),
         CatchTable = "InchGroup",
         .groups = "drop"
@@ -168,9 +167,9 @@ lengthFreqByEffort<-function(con,effortData,OutputType="Table"){
     # scaleEnvelopeSum <- scaleEnvelope %>%
     #   #had to deal with multiple agers- set it up as mean length by serial number
     #   group_by(SurveyId,SpeciesStrainId,EnvelopeSerialNumber)%>%
-    #   summarise(TotalLengthInInches =mean(TotalLengthInInches ,na.rm = T), .groups = "drop")%>%
+    #   summarize(TotalLengthInInches =mean(TotalLengthInInches ,na.rm = T), .groups = "drop")%>%
     #   group_by(SurveyId,SpeciesStrainId,LegalSize) %>%
-    #   summarise(
+    #   summarize(
     #     TotalNumberCaught = sum(n(), na.rm = TRUE),
     #     CatchTable = "ScaleEnvelope",
     #     .groups = "drop"

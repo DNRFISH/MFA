@@ -124,9 +124,9 @@
 #' DBI::dbDisconnect(con)
 #' }
 #' 
-#' @importFrom dplyr tbl filter select distinct left_join rename inner_join full_join collect
+#' @importFrom dplyr tbl filter select distinct left_join rename inner_join full_join collect '%>%'
 #' @importFrom lubridate year
-#' @importFrom magrittr %>%
+#' @importFrom rlang .data .env
 #' 
 #' @export
 #'
