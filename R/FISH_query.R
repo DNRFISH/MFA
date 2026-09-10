@@ -102,11 +102,9 @@
 #' is returned.
 #' 
 #' @examples
-#' con <- dbConnect(odbc(),
-#' Driver = "ODBC Driver 17 for SQL Server",
-#' Server = "DNRSQLWEB",
-#' Database = "FISHReport",
-#' Trusted_Connection = "yes")
+#' \dontrun{
+#' #connect to database
+#' con <- FISHub_connect()
 #' 
 #' #single survey; note different query types
 #' FISH_Data <- FISH_query(con,QueryType = "Survey",SurveyId = 805)
@@ -122,9 +120,13 @@
 #' #all surveys that caught bowfin in 2025
 #' FISH_Data <- FISH_query(con,QueryType = "Survey",Species="Bowfin",Year=2025)
 #' 
+#' #disconnect from database
+#' DBI::dbDisconnect(con)
+#' }
 #' 
 #' @importFrom dplyr tbl filter select distinct left_join rename inner_join full_join collect
 #' @importFrom lubridate year
+#' @importFrom magrittr %>%
 #' 
 #' @export
 #'

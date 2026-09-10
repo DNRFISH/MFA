@@ -90,6 +90,7 @@
 #'
 #'
 #'@importFrom dplyr n_distinct filter mutate group_by summarise
+#'@importFrom magrittr %>%
 #'
 #' @export
 

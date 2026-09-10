@@ -116,6 +116,9 @@
 #'
 #' @examples
 #' \dontrun{
+#' #connect to database
+#' con <- FISHub_connect()
+#' 
 #' # Query FISHub data
 #' effortData<-FISH_query(con,QueryType = "Efforts",SurveyId = 805)
 #'
@@ -124,10 +127,14 @@
 #'
 #' # Override legal sizes for species with waterbody-specific regulations
 #' catch_summary <- catchByEffort(con = con,effortData = effortData,Special_Legal_Sizes = c("Largemouth Bass" = 10,"Brook Trout" = 12))
+#' 
+#' #disconnect from database
+#' DBI::dbDisconnect(con)
 #' }
 #'
 #'
 #' @importFrom dplyr tbl filter select left_join mutate coalesce group_by summarise bind_rows
+#' @importFrom magrittr %>%
 #' 
 #' @export
 

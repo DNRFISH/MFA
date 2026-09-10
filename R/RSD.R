@@ -118,6 +118,9 @@
 #'
 #' @examples
 #' \dontrun{
+#' #connect to database
+#' con <- FISHub_connect()
+#' 
 #' # Obtain length-frequency data
 #' lengthFreqData <- lengthFreqByEffort(
 #'   con = con,
@@ -127,9 +130,14 @@
 #'
 #' # Calculate RSD metrics
 #' rsd_summary <- RSD(lengthFreqData)
+#' 
+#' #disconnect from database
+#' DBI::dbDisconnect(con)
+#' 
 #' }
 #'
 #' @importFrom dplyr filter group_by summarise
+#' @importFrom magrittr %>%
 #'
 #' @export
 
@@ -139,8 +147,8 @@ RSD<-function(lengthFreqData){
     stop("No catch data included. Need to provide catch data from FISH_query")
   }
   
-  #read in gabelhouse lengths-- used relative path for app compatability; convert this to packaged dataset when published
-  RSDvals<-readr::read_csv("data/Gabelhouse_RSD_lengths.csv",show_col_types = FALSE)
+  #read in gabelhouse lengths
+  RSDvals <- Gabelhouse_RSD_lengths
   
   #add gabelhouse categories to length data
   labels<-c("Stock","Quality","Preferred","Memorable","Trophy")

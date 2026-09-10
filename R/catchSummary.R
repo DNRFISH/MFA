@@ -17,10 +17,19 @@
 #'   meet  statewide or other specified legal minimum size limit.
 #'
 #' @examples
+#' \dontrun{
+#' #connect to database
+#' con <- FISHub_connect()
+#' 
 #' catchData<-FISH_query(con,QueryType = "Catch",SurveyId = 805)
 #' catchSum <- catchSummary(catchData)
 #' 
+#' #' #disconnect from database
+#' DBI::dbDisconnect(con)
+#' }
+#' 
 #' @importFrom dplyr filter mutate group_by summarise
+#' @importFrom magrittr %>%
 #' 
 #' @export
 

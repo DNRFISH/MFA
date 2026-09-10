@@ -85,6 +85,9 @@
 #'
 #' @examples
 #' \dontrun{
+#' #connect to database
+#' con <- FISHub_connect()
+#' 
 #' # Query survey effort data
 #' effortData <- FISH_query(
 #'   con,
@@ -104,10 +107,14 @@
 #'   effortData = effortData,
 #'   OutputType = "Figure"
 #' )
+#' 
+#' #disconnect from database
+#' DBI::dbDisconnect(con)
 #' }
 #'
-#' @importFrom dplyr tbl select left_join filter collect mutategroup_by summarise bind_rows
+#' @importFrom dplyr tbl select left_join filter collect mutate group_by summarise bind_rows
 #' @importFrom ggplot2 ggplot geom_col aes theme_classic facet_wrap labs
+#' @importFrom magrittr %>%
 #' 
 #' @export
 

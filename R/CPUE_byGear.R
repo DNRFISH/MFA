@@ -138,6 +138,7 @@
 #'
 #' @importFrom dplyr filter mutate if_else case_when select group_by summarise inner_join
 #' @importFrom ggplot2 ggplot geom_bar aes facet_wrap theme_classic scale_fill_viridis_d xlab ylab labs theme element_text
+#' @importFrom magrittr %>%
 #'   
 #' @export
 
