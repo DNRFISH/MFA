@@ -142,8 +142,8 @@
 
 RSD<-function(lengthFreqData){
   
-  if(!"TotalNumberCaught" %in% names(lengthFreqData)){
-    stop("No catch data included. Need to provide catch data from FISH_query")
+  if(!"InchGroup" %in% names(lengthFreqData)){
+    stop("No inch group data included. Need to provide data from lengthFreqByEffort")
   }
   
   #read in gabelhouse lengths
