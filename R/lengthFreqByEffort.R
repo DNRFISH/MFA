@@ -106,6 +106,9 @@
 #' )
 #' }
 #'
+#' @importFrom dplyr tbl select left_join filter collect mutategroup_by summarise bind_rows
+#' @importFrom ggplot2 ggplot geom_col aes theme_classic facet_wrap labs
+#' 
 #' @export
 
 lengthFreqByEffort<-function(con,effortData,OutputType="Table"){

@@ -126,6 +126,9 @@
 #' catch_summary <- catchByEffort(con = con,effortData = effortData,Special_Legal_Sizes = c("Largemouth Bass" = 10,"Brook Trout" = 12))
 #' }
 #'
+#'
+#' @importFrom dplyr tbl filter select left_join mutate coalesce group_by summarise bind_rows
+#' 
 #' @export
 
 #NOTE: avg length doesn't currently line up with SFRs because of data issues identifed during FISH development

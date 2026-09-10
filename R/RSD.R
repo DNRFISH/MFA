@@ -129,6 +129,8 @@
 #' rsd_summary <- RSD(lengthFreqData)
 #' }
 #'
+#' @importFrom dplyr filter group_by summarise
+#'
 #' @export
 
 RSD<-function(lengthFreqData){
@@ -137,7 +139,7 @@ RSD<-function(lengthFreqData){
     stop("No catch data included. Need to provide catch data from FISH_query")
   }
   
-  #read in gabelhouse lengths-- used relative path for app compatability
+  #read in gabelhouse lengths-- used relative path for app compatability; convert this to packaged dataset when published
   RSDvals<-readr::read_csv("data/Gabelhouse_RSD_lengths.csv",show_col_types = FALSE)
   
   #add gabelhouse categories to length data

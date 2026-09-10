@@ -123,6 +123,9 @@
 #' FISH_Data <- FISH_query(con,QueryType = "Survey",Species="Bowfin",Year=2025)
 #' 
 #' 
+#' @importFrom dplyr tbl filter select distinct left_join rename inner_join full_join collect
+#' @importFrom lubridate year
+#' 
 #' @export
 #'
 

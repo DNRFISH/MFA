@@ -20,6 +20,8 @@
 #' catchData<-FISH_query(con,QueryType = "Catch",SurveyId = 805)
 #' catchSum <- catchSummary(catchData)
 #' 
+#' @importFrom dplyr filter mutate group_by summarise
+#' 
 #' @export
 
 

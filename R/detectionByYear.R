@@ -88,6 +88,9 @@
 #' detection_summary <- detectionByYear(catchData)
 #' }
 #'
+#'
+#'@importFrom dplyr n_distinct filter mutate group_by summarise
+#'
 #' @export
 
 
@@ -101,7 +104,7 @@ detectionByYear <- function(catchData) {
   #get detections by species and year
   detectSummary<-catchData%>%
     filter(!is.na(GearType))%>% #removes limno
-    mutate(Year=year(SurveyBeginTimestamp))%>%
+    mutate(Year=lubridate::year(SurveyBeginTimestamp))%>%
     group_by(Year,Species)%>%
     summarise(Detect=as.integer(sum(TotalNumberCaught,na.rm = T)>0),.groups = "drop")%>%
     #mutate(Detect="x",Species=as.character(varhandle::unfactor(Species)))%>%
@@ -117,7 +120,7 @@ detectionByYear <- function(catchData) {
   #get # surveys and # efforts by year
   effortSummary<-catchData%>%
     filter(!is.na(GearType))%>%
-    mutate(Year=year(SurveyBeginTimestamp))%>%
+    mutate(Year=lubridate::year(SurveyBeginTimestamp))%>%
     group_by(Year)%>%
     summarise(N_Surveys=length(unique(SurveyId)),
               N_Efforts=length(unique(paste0(SurveyId,SurveyEffortKey))))%>%

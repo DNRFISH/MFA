@@ -171,6 +171,9 @@
 #' )
 #' }
 #'
+#' @importFrom dplyr tbl filter select left_join group_by summarise slice_max mutate ungroup arrange
+#' @importFrom ggplot2 ggplot geom_line aes geom_errorbar facet_wrap theme_classic ylab xlab guides guide_legend
+#'
 #' @export
 
 ageLengthSummary<-function(con,effortData,OutputType="Table"){
