@@ -13,19 +13,22 @@ library(ggplot2)
 
 
 ###############################################################################################################################
-##Connect to databases
-###############################################################################################################################
-#Reporting database
-con <- dbConnect(odbc(),
-                 Driver = "ODBC Driver 17 for SQL Server",
-                 Server = "DNRSQLWEB",
-                 Database = "FISHReport",
-                 Trusted_Connection = "yes")
-
-###############################################################################################################################
 ##load the functions that are ready
 ###############################################################################################################################
 invisible(lapply(list.files("./code/", full.names = TRUE,recursive = T), source))
+
+
+###############################################################################################################################
+##Connect to databases
+###############################################################################################################################
+#Reporting database
+# con <- dbConnect(odbc(),
+#                  Driver = "ODBC Driver 17 for SQL Server",
+#                  Server = "DNRSQLWEB",
+#                  Database = "FISHReport",
+#                  Trusted_Connection = "yes")
+con<-FISHub_connect()
+
 
 
 ###############################################################################################################################
@@ -99,7 +102,7 @@ detectionByYearSum<-detectionByYear(catchData)
 ###############################################################################################################################
 ##Length frequency and RSD-- have gone back and forth on whether this should be a standalone function or repeated code
 ###############################################################################################################################
-lengthFreqData <- lengthFreqByEffort(SurveyEffortData=FISH_query(con,QueryType ="Efforts",SurveyId = 805),OutputType="Table")
+lengthFreqData <- lengthFreqByEffort(con,effortData=FISH_query(con,QueryType ="Efforts",SurveyId = 805),OutputType="Table")
 RSDsum<-RSD(lengthFreqData)
 
 ###############################################################################################################################
