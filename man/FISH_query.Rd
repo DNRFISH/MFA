@@ -39,7 +39,7 @@ filters are included.}
 
 \item{SurveyPurpose}{Character vector specifying one or more survey
 purposes to include in the query. Values must match the survey purpose
-descriptions in FISHub. Available survey purposes include
+descriptions in FISHub. Must be one of
 \code{"Creel Census"}, \code{"Discretionary Survey"}, \code{"Fish Community"},
 \code{"General Survey"}, \code{"Limnology"}, \code{"Management Evaluation"},
 \code{"Population Estimate"}, \code{"Population Reduction"},
@@ -56,7 +56,12 @@ filters.}
 \item{GearType}{Character vector specifying one or more gear types to
 include in the query. If \code{NULL}, efforts using all gear types are
 included. When specified, only surveys and efforts associated with the
-selected gear types are returned.}
+selected gear types are returned. Must be one of
+\code{"EXPGNET"}, \code{"TRAPNET"}, \code{"BOOMSHK"}, \code{"LMFYKE"}, \code{"BACKSHK"},
+\code{"OTHER"}, \code{"GLGNET"}, \code{"SMFYKE"}, \code{"SEINE"}, \code{"ANGLING"},
+\code{"LIMNO"}, \code{"TRAWL"}, \code{"STRMSHK"}, \code{"Envelop"}, \code{"PhotoPt"},
+\code{"PLNKNET"}, \code{"VGNET"}, \code{"TOXSAM"}, \code{"MNWTRAP"}, \code{"SRGNET"},
+and \code{"SETHKS"}. \code{NA} is also permitted.}
 
 \item{Species}{Character vector specifying one or more species names to
 include in the query. Species names must match the corresponding
