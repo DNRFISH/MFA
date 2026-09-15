@@ -342,17 +342,24 @@ catchByEffort <- function(con,effortData,Special_Legal_Sizes = NULL) {
     #scale   = if (exists("scaleEnvelopeSum")) scaleEnvelopeSum else NULL #add this back in whenever we have data in this table
   )
   
+  #combine tables
+  combinedSum <- bind_rows(tables_list[!sapply(tables_list, is.null)])
+  
+  #check to confirm there are data
+  if (nrow(combinedSum) == 0) {
+    stop("No data found. Check query inputs.")
+  }
   
   #join legal sizes to species str table
   SpeciesStrain<-tbl(con, "SpeciesStrain") %>%
     select(SpeciesStrainId,Species,Strain)%>%
     collect()
   
-  combinedSum <- bind_rows(tables_list[!sapply(tables_list, is.null)])%>%
+  outDat<-combinedSum%>%
     left_join(SpeciesStrain,by = "SpeciesStrainId")%>%
     select(SurveyId,ModuleId,Species,TotalNumberCaught,LengthAverage,LengthMinimum,LengthMaximum,LegalSize,N_legal,CatchTable)
     
-  return(combinedSum)
+  return(outDat)
 }
 
 
