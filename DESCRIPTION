@@ -10,7 +10,6 @@ Roxygen: list(markdown = TRUE)
 Imports:
     DBI,
     odbc,
-    dbplyr,
     dplyr,
     tidyr,
     ggplot2,
