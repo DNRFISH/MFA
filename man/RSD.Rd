@@ -130,12 +130,11 @@ Gabelhouse reference length are excluded from the RSD calculations.
 #connect to database
 con <- FISHub_connect()
 
+#Query effort data
+effortData <- FISH_query(con,QueryType = "Efforts",SurveyId = 805)
+
 # Obtain length-frequency data
-lengthFreqData <- lengthFreqByEffort(
-  con = con,
-  effortData = effortData,
-  OutputType = "Table"
-)
+lengthFreqData <- lengthFreqByEffort(con = con,effortData = effortData)
 
 # Calculate RSD metrics
 rsd_summary <- RSD(lengthFreqData)
