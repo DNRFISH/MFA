@@ -1,10 +1,10 @@
+con <- FISHub_connect()
+
+effortData <- FISH_query(con,QueryType = "Efforts",SurveyId = 805)
+lengthFreqData <- lengthFreqByEffort(con = con,effortData = effortData)
 
 
-MFA_example_data <- readRDS(
-  testthat::test_path("test-data/MFA_example_LengthFreqdata_805.rds")
-)
-
-RSDsum<-RSD(MFA_example_data)
+RSDsum<-RSD(lengthFreqData)
 BCR<-RSDsum%>%filter(Species=="Black Crappie")
 
 test_that("Number of preferred sized black crappie (>= 10 inches)", {
