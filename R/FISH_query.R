@@ -26,7 +26,7 @@
 #'
 #' @param SurveyPurpose Character vector specifying one or more survey
 #'   purposes to include in the query. Values must match the survey purpose
-#'   descriptions in FISHub. Available survey purposes include
+#'   descriptions in FISHub. Must be one of
 #'   `"Creel Census"`, `"Discretionary Survey"`, `"Fish Community"`,
 #'   `"General Survey"`, `"Limnology"`, `"Management Evaluation"`,
 #'   `"Population Estimate"`, `"Population Reduction"`,
@@ -43,7 +43,12 @@
 #' @param GearType Character vector specifying one or more gear types to
 #'   include in the query. If `NULL`, efforts using all gear types are
 #'   included. When specified, only surveys and efforts associated with the
-#'   selected gear types are returned.
+#'   selected gear types are returned. Must be one of
+#'   `"EXPGNET"`, `"TRAPNET"`, `"BOOMSHK"`, `"LMFYKE"`, `"BACKSHK"`,
+#'   `"OTHER"`, `"GLGNET"`, `"SMFYKE"`, `"SEINE"`, `"ANGLING"`,
+#'   `"LIMNO"`, `"TRAWL"`, `"STRMSHK"`, `"Envelop"`, `"PhotoPt"`,
+#'   `"PLNKNET"`, `"VGNET"`, `"TOXSAM"`, `"MNWTRAP"`, `"SRGNET"`,
+#'   and `"SETHKS"`. `NA` is also permitted.
 #'
 #' @param Species Character vector specifying one or more species names to
 #'   include in the query. Species names must match the corresponding
@@ -144,8 +149,9 @@ FISH_query <- function(con,
   
   #check to confirm query type is valid
   if (!QueryType %in% c("Survey", "Efforts", "Catch")) {
-    stop("QueryType must be one of 'Survey', 'Efforts', or 'Catch'.")
+    stop("Invalid QueryType. Must be one of: 'Survey', 'Efforts', or 'Catch'.")
   }
+  
   
   # --- Begin query ---
   #WaterBody
@@ -166,16 +172,26 @@ FISH_query <- function(con,
     rename(SurveyPurpose=Descriptions)%>%
     left_join(tbl(con, "SurveyStatus")%>%select(SurveyStatusId,Descriptions),by = "SurveyStatusId")%>%
     rename(SurveyStatus=Descriptions)%>%
-    select(SurveyId,MDNRID,SurveyPurpose,SurveyStatus,SurveyBeginTimestamp,FixedOrRandom,SurveyPurposeDescription)
+    mutate(Year=lubridate::year(SurveyBeginTimestamp))%>%
+    select(SurveyId,MDNRID,SurveyPurpose,SurveyStatus,Year,SurveyBeginTimestamp,FixedOrRandom,SurveyPurposeDescription)
     
   if(!is.null(SurveyId)){
       Survey<-Survey%>%filter(.data$SurveyId %in% .env$SurveyId)
     }
   if(!is.null(SurveyPurpose)){
+    if(!SurveyPurpose%in%c("Creel Census", "Discretionary Survey", "Fish Community", "General Survey",
+                           "Limnology", "Management Evaluation", "Population Estimate",
+                           "Population Reduction", "Recruitment Evaluation", "Recruitment v Evaluation",
+                           "Research Project", "Special Study", "Species Evaluation", "Status & Trends",
+                           "Stocking Evaluation")){
+      stop("Invalid SurveyPurpose. Must be one of: Creel Census, Discretionary Survey, Fish Community, General Survey,Limnology,
+      Management Evaluation, Population Estimate,Population Reduction, Recruitment Evaluation, Recruitment v Evaluation,
+      Research Project, Special Study, Species Evaluation, Status & Trends,Stocking Evaluation")
+    }
     Survey<-Survey%>%filter(.data$SurveyPurpose %in% .env$SurveyPurpose)
   }
   if(!is.null(Year)){
-    Survey<-Survey%>%filter(lubridate::year(.data$SurveyBeginTimestamp) %in% .env$Year)
+    Survey<-Survey%>%filter(.data$Year %in% .env$Year)
   }
 
   
@@ -185,10 +201,18 @@ FISH_query <- function(con,
     select(SurveyId,SurveyEffortId,SurveyEffortKey,ModuleId)%>%
     left_join(tbl(con, "SurveyEffortDetail"),by="SurveyEffortId")%>%
     left_join(tbl(con, "Gear") %>%select(GearId, GearType),by="GearId")%>%
-    select(SurveyId,SurveyEffortId,SurveyEffortKey,ModuleId, BeginningEffortTimestamp, EndingEffortTimestamp, GearType,EffortNumberofGearUsed, EffortTotalQuantity, 
+    mutate(GearType<-trimws(GearType))%>%
+    select(SurveyId,SurveyEffortId,SurveyEffortKey,ModuleId,BeginningEffortTimestamp, EndingEffortTimestamp, GearType,EffortNumberofGearUsed, EffortTotalQuantity, 
               EffortTotalMeasurement, EffortAlternateQuantity, EffortAlternateMeasurement)
 
   if(!is.null(GearType)){
+    if(!GearType%in%c("ANGLING", "BACKSHK", "BOOMSHK", "Envelop", "EXPGNET", "GLGNET",
+                      "LMFYKE", "LIMNO", "MNWTRAP", "OTHER", "PhotoPt", "PLNKNET",
+                      "SEINE", "SETHKS", "SMFYKE", "SRGNET", "STRMSHK", "TOXSAM",
+                      "TRAPNET", "TRAWL", "VGNET")){
+      stop("GearType must be one of ANGLING,BACKSHK,BOOMSHK,Envelop,EXPGNET,GLGNET,LMFYKE,LIMNO,MNWTRAP,OTHER,PhotoPt,PLNKNET,SEINE,SETHKS,SMFYKE,SRGNET,STRMSHK,TOXSAM,TRAPNET,TRAWL,VGNET")
+    }
+
     message("Note: query only retruns surveys/efforts that had the specified gears.")
     Effort<-Effort%>%filter(.data$GearType %in% .env$GearType)
   }
@@ -231,7 +255,7 @@ FISH_query <- function(con,
   
   #print if no data found
   if(nrow(outDat)==0){
-    message("No data found. Confirm spelling and data is in FISHub. Contact MFA team for assistance if you believe there are missing data.")
+    message("No data found. Confirm spelling and data are in FISHub. Contact MFA team for assistance if you believe there are missing data.")
   }
   return(outDat)
 }
