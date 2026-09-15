@@ -213,7 +213,7 @@ FISH_query <- function(con,
       stop("GearType must be one of ANGLING,BACKSHK,BOOMSHK,Envelop,EXPGNET,GLGNET,LMFYKE,LIMNO,MNWTRAP,OTHER,PhotoPt,PLNKNET,SEINE,SETHKS,SMFYKE,SRGNET,STRMSHK,TOXSAM,TRAPNET,TRAWL,VGNET")
     }
 
-    message("Note: query only retruns surveys/efforts that had the specified gears.")
+    message("Note: query only returns surveys/efforts that had the specified gears.")
     Effort<-Effort%>%filter(.data$GearType %in% .env$GearType)
   }
   
