@@ -129,7 +129,7 @@
 #' DBI::dbDisconnect(con)
 #' }
 #' 
-#' @importFrom dplyr tbl filter select distinct left_join rename inner_join full_join collect '%>%'
+#' @importFrom dplyr tbl filter select distinct left_join rename inner_join full_join collect '%>%' semi_join
 #' @importFrom lubridate year
 #' @importFrom rlang .data .env
 #' 
@@ -242,14 +242,73 @@ FISH_query <- function(con,
   #specify output based on query
   if (QueryType=="Survey") {
     outDat<-allDat%>%select(colnames(surveyDat))%>%unique()
+    
+    #look for potential issues (see issue #17)
+    flagged <- outDat %>%
+      mutate(SurveyId=as.character(SurveyId))%>%
+      dplyr::semi_join(
+      flagged_surveys_species_2026.09.02,
+      by = c("SurveyId")
+    )
+    
+    if (nrow(flagged) > 0) {
+      warning(
+        "DON'T USE THESE DATA UNTIL VERIFIED!!! \nThe following SurveyIDs were identified with potential errors: ",
+        paste(
+          paste(flagged$SurveyId),
+          collapse = ", "
+        ),
+        "\nSee data(flagged_surveys_species_2026.09.02) for reference. Contact MFA team for more information."
+      )
+    }
   }
   if (QueryType=="Efforts") {
     outDat<-allDat%>%select(colnames(surveyEffortDat))%>%unique()
+    
+    #look for potential issues (see issue #17)
+    flagged <- outDat %>%
+      mutate(SurveyId=as.character(SurveyId))%>%
+      dplyr::semi_join(
+        flagged_surveys_species_2026.09.02,
+        by = c("SurveyId","SurveyEffortKey")
+      )
+    
+    if (nrow(flagged) > 0) {
+      warning(
+        "DON'T USE THESE DATA UNTIL VERIFIED!!! \nThe following SurveyID-SurveyEffortKey combinations were identified with potential errors: ",
+        paste(
+          paste(flagged$SurveyId, flagged$SurveyEffortKey, sep = "-"),
+          collapse = ", "
+        ),
+        "\nSee data(flagged_surveys_species_2026.09.02) for reference. Contact MFA team for more information."
+      )
+    }
   }
   if (QueryType=="Catch") {
     outDat<-allDat
     if(!is.null(Species)){
       message("Note: query only returns surveys/efforts that caught the specified species. It is missing efforts with no capture. Be cautious when calculating CPUE or use CPUE function .")
+    }
+    
+    #look for potential issues (see issue #17)
+    flagged <- outDat %>%
+      mutate(SurveyId=as.character(SurveyId))%>%
+      dplyr::semi_join(
+        flagged_surveys_species_2026.09.02,
+        by = c("SurveyId","SurveyEffortKey") #didn't both with species since the codes are slightly different
+      )%>%
+      select(SurveyId,SurveyEffortKey)%>%
+      unique()
+    
+    if (nrow(flagged) > 0) {
+      warning(
+        "DON'T USE THESE DATA UNTIL VERIFIED!!! \nThe following SurveyID-SurveyEffortKey combinations were identified with potential errors: ",
+        paste(
+          paste(flagged$SurveyId, flagged$SurveyEffortKey, sep = "-"),
+          collapse = ", "
+        ),
+        "\nSee data(flagged_surveys_species_2026.09.02) for reference. Contact MFA team for more information."
+      )
     }
   }
   

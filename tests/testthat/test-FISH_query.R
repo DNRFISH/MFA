@@ -63,3 +63,9 @@ test_that("FISH_query rejects invalid queries", {
   expect_error(FISH_query(con, QueryType = "Survey",SurveyPurpose="BadPurpose"))
 })
 
+test_that("FISH_query provides warning about data issues", {
+  expect_warning(FISH_query(con,QueryType = "Survey",SurveyId = 15204),"DON'T USE")
+  expect_warning(FISH_query(con,QueryType = "Efforts",SurveyId = 15204),"DON'T USE")
+  expect_warning(FISH_query(con,QueryType = "Catch",SurveyId = 15204),"DON'T USE")
+})
+
