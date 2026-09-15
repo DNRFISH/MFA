@@ -14,7 +14,7 @@ The development version can be installed from GitHub:
 
 ``` r
 # install.packages("remotes")
-remotes::install_github("YOUR-REPOSITORY/MFA")
+remotes::install_github("DNRFISH/MFA")
 ```
 
 ## Connecting to FISHub
