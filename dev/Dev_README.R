@@ -26,6 +26,7 @@ devtools::check()
 
 #for adding new data tables
 #save raw data in data-raw
-#convert to .rda using the following code
-# flagged_surveys_species_2026.09.02 <- readr::read_csv("data-raw/flagged_surveys_species_2026.09.02.csv")
-# usethis::use_data(flagged_surveys_species_2026.09.02, overwrite = TRUE)
+#convert to .rda using the following example code
+# Status_and_Trends_extra_efforts <- readr::read_csv("data-raw/Status_and_Trends_extra_efforts.csv")
+# usethis::use_data(Status_and_Trends_extra_efforts, overwrite = TRUE)
+#document data with .R file; put all the relevant data source and edit details in there
