@@ -242,79 +242,126 @@ FISH_query <- function(con,
   #specify output based on query
   if (QueryType=="Survey") {
     outDat<-allDat%>%select(colnames(surveyDat))%>%unique()
-    
-    #look for potential issues (see issue #17)
-    flagged <- outDat %>%
-      mutate(SurveyId=as.character(SurveyId))%>%
-      dplyr::semi_join(
-      flagged_surveys_species_2026.09.02,
-      by = c("SurveyId")
-    )
-    
-    if (nrow(flagged) > 0) {
-      warning(
-        "DON'T USE THESE DATA UNTIL VERIFIED!!! \nThe following SurveyIDs were identified with potential errors: ",
-        paste(
-          paste(flagged$SurveyId),
-          collapse = ", "
-        ),
-        "\nSee data(flagged_surveys_species_2026.09.02) for reference. Contact MFA team for more information."
-      )
-    }
   }
   if (QueryType=="Efforts") {
     outDat<-allDat%>%select(colnames(surveyEffortDat))%>%unique()
-    
-    #look for potential issues (see issue #17)
-    flagged <- outDat %>%
-      mutate(SurveyId=as.character(SurveyId))%>%
-      dplyr::semi_join(
-        flagged_surveys_species_2026.09.02,
-        by = c("SurveyId","SurveyEffortKey")
-      )
-    
-    if (nrow(flagged) > 0) {
-      warning(
-        "DON'T USE THESE DATA UNTIL VERIFIED!!! \nThe following SurveyID-SurveyEffortKey combinations were identified with potential errors: ",
-        paste(
-          paste(flagged$SurveyId, flagged$SurveyEffortKey, sep = "-"),
-          collapse = ", "
-        ),
-        "\nSee data(flagged_surveys_species_2026.09.02) for reference. Contact MFA team for more information."
-      )
-    }
   }
   if (QueryType=="Catch") {
     outDat<-allDat
     if(!is.null(Species)){
       message("Note: query only returns surveys/efforts that caught the specified species. It is missing efforts with no capture. Be cautious when calculating CPUE or use CPUE function .")
     }
-    
-    #look for potential issues (see issue #17)
-    flagged <- outDat %>%
-      mutate(SurveyId=as.character(SurveyId))%>%
+  }
+  
+  ##############################################################################
+  ###look for catch discrepancies (see issue #17)
+  ##############################################################################
+  if(QueryType=="Survey"){
+    catchDiscrepancy <- outDat %>%
       dplyr::semi_join(
-        flagged_surveys_species_2026.09.02,
+        Catch_discrepancies,
+      by = c("SurveyId"))
+    
+      if (nrow(catchDiscrepancy) > 0) {
+        warning(
+          "DO NOT USE THESE DATA UNTIL VERIFIED!!!",
+          "\n\nThe following SurveyIDs were identified with catch discrepancies: \n\n",
+          paste0(paste(catchDiscrepancy$SurveyId),collapse = "\n"),
+          "\n\nSee data(Catch_discrepancies) for reference. Contact MFA team for more information.",
+          "\n\nWARNED YOU HAVE BEEN"
+        )
+      }
+      
+    }else{
+      catchDiscrepancy <- outDat %>%
+        dplyr::semi_join(
+          Catch_discrepancies,
+          by = c("SurveyId","SurveyEffortKey")
+          )%>%
+        select(SurveyId,SurveyEffortKey)%>%
+        unique()
+      
+      if (nrow(catchDiscrepancy) > 0) {
+        warning(
+          "DO NOT USE THESE DATA UNTIL VERIFIED!!!",
+          "\n\nThe following SurveyID-SurveyEffortKey combinations were identified with catch discrepancies: \n\n",
+          paste(paste(catchDiscrepancy$SurveyId, catchDiscrepancy$SurveyEffortKey, sep = "-"),collapse = "\n"),
+          "\n\nSee data(Catch_discrepancies) for reference. Contact MFA team for more information.",
+          "\n\nWARNED YOU HAVE BEEN"
+        )
+      }
+      }
+
+
+
+  
+
+
+  ##############################################################################
+  ###status and trends surveys with extra efforts (see issue #19)
+  ############################################################################## 
+  #if it's a survey query, just print the warning; no catch/effort data exported yet, so not an issue
+  if(QueryType=="Survey"){
+    #flag surveys
+    SnT_extraEfforts_Surveys <- outDat %>%
+      mutate(SurveyId=SurveyId)%>%
+      dplyr::semi_join(
+        Status_and_Trends_extra_efforts,
+        by = c("SurveyId"))
+    
+      if (nrow(SnT_extraEfforts_Surveys) > 0) {
+        warning(
+          "The following SurveyIDs were identified as S&T surveys with extra (non S&T) efforts: \n\n",
+          paste(paste(SnT_extraEfforts_Surveys$SurveyId),collapse = "\n"),
+          "\n\nDO NOT USE as part of S&T surveys. Use SurveyPurpose='Status & Trends' to filter out.",
+          "\nSee data(Status_and_Trends_extra_efforts) for reference. Contact MFA team for more information."
+        )
+      }
+  }else{
+    #get extra survey-effort keys
+    SnT_extraEfforts <- outDat %>%
+      mutate(SurveyId=SurveyId)%>%
+      dplyr::semi_join(
+        Status_and_Trends_extra_efforts,
         by = c("SurveyId","SurveyEffortKey") #didn't both with species since the codes are slightly different
       )%>%
       select(SurveyId,SurveyEffortKey)%>%
       unique()
     
-    if (nrow(flagged) > 0) {
-      warning(
-        "DON'T USE THESE DATA UNTIL VERIFIED!!! \nThe following SurveyID-SurveyEffortKey combinations were identified with potential errors: ",
-        paste(
-          paste(flagged$SurveyId, flagged$SurveyEffortKey, sep = "-"),
-          collapse = ", "
-        ),
-        "\nSee data(flagged_surveys_species_2026.09.02) for reference. Contact MFA team for more information."
-      )
+    if (nrow(SnT_extraEfforts) > 0) {
+      #if it's a S&T survey, filter out the extra surveys and print a warning
+      if(!is.null(SurveyPurpose)){
+        if(SurveyPurpose=="Status & Trends"){
+          outDat<-outDat %>%
+            mutate(SurveyId=SurveyId)%>%
+            dplyr::anti_join(
+              Status_and_Trends_extra_efforts,
+              by = c("SurveyId","SurveyEffortKey") #didn't both with species since the codes are slightly different
+            )
+          warning("Extra efforts removed from query: ",
+                    paste(
+                      paste(SnT_extraEfforts$SurveyId, SnT_extraEfforts$SurveyEffortKey, sep = "-"),
+                    collapse = "\n"
+                    )
+                  )
+        }
+      }else{
+        warning("The following SurveyID-SurveyEffortKey combinations were identified as S&T surveys with extra (non S&T) efforts:\n\n",
+                paste(
+                  paste(SnT_extraEfforts$SurveyId, SnT_extraEfforts$SurveyEffortKey, sep = "-"),
+                  collapse = "\n"
+                ),
+                "\n\nDO NOT USE as part of S&T surveys. Use SurveyPurpose='Status & Trends' to filter out.",
+                "\n\nWARNED YOU HAVE BEEN")
+      }
     }
-  }
+    }
+    
   
+  ################################################################################
   #print if no data found
   if(nrow(outDat)==0){
-    message("No data found. Confirm spelling and data are in FISHub. Contact MFA team for assistance if you believe there are missing data.")
+    message("No data found. Confirm spelling of query and that data are in FISHub. Contact MFA team for assistance if you believe there are missing data.")
   }
   return(outDat)
 }

@@ -22,13 +22,13 @@ test_that("FISH_query is working, filters by SurveyID for each QueryType", {
 
 
 test_that("FISH_query applies individual filters", {
-  result <- FISH_query(con,QueryType = "Survey",Year = 2025)
+  expect_warning(result <- FISH_query(con,QueryType = "Survey",Year = 2024),"DO NOT USE") #expected until Catch_discrepancies addressed
   expect_gt(nrow(result), 0)
-  expect_true(all(result$Year == 2025))
+  expect_true(all(result$Year == 2024))
   
-  result <- FISH_query(con,QueryType = "Survey",SurveyPurpose = "Status & Trends",Year=2025)
+  expect_warning(result <- FISH_query(con,QueryType = "Survey",SurveyPurpose = "Management Evaluation"),"DO NOT USE") #expected until Catch_discrepancies addressed
   expect_gt(nrow(result), 0)
-  expect_true(all(result$SurveyPurpose == "Status & Trends"))
+  expect_true(all(result$SurveyPurpose == "Management Evaluation"))
   
   result <- FISH_query(con,QueryType = "Catch",MDNRID = "L7844")
   expect_gt(nrow(result), 0)
@@ -37,7 +37,7 @@ test_that("FISH_query applies individual filters", {
 
 
 test_that("FISH_query applies multiple filters", {
-  result <- FISH_query(con,QueryType = "Catch",GearType = "LMFYKE",Species = "Walleye")
+  expect_warning(result <- FISH_query(con,QueryType = "Catch",GearType = "LMFYKE",Species = "Walleye"),"DO NOT USE") #expected until Catch_discrepancies addressed
   expect_true(all(result$Species == "Walleye"))
   expect_true(all(result$GearType == "LMFYKE"))
   
@@ -63,9 +63,19 @@ test_that("FISH_query rejects invalid queries", {
   expect_error(FISH_query(con, QueryType = "Survey",SurveyPurpose="BadPurpose"))
 })
 
-test_that("FISH_query provides warning about data issues", {
-  expect_warning(FISH_query(con,QueryType = "Survey",SurveyId = 15204),"DON'T USE")
-  expect_warning(FISH_query(con,QueryType = "Efforts",SurveyId = 15204),"DON'T USE")
-  expect_warning(FISH_query(con,QueryType = "Catch",SurveyId = 15204),"DON'T USE")
+test_that("FISH_query provides warning about catch discrepancy issues", {
+  expect_warning(FISH_query(con,QueryType = "Survey",SurveyId = 15204),"DO NOT USE")
+  expect_warning(FISH_query(con,QueryType = "Efforts",SurveyId = 15204),"DO NOT USE")
+  expect_warning(FISH_query(con,QueryType = "Catch",SurveyId = 15204),"DO NOT USE")
+  expect_no_warning(FISH_query(con,QueryType = "Catch",SurveyId = 15222)) #was split out from a survey with a discrepancy, should be no warning
+  expect_warning(FISH_query(con,QueryType = "Catch",SurveyId = 15221),"DO NOT USE")
+  
+})
+
+test_that("FISH_query provides warning and prompts about extra status and trends efforts", {
+  expect_warning(FISH_query(con,QueryType = "Survey",SurveyId = 2785),"DO NOT USE")
+  expect_warning(result<-FISH_query(con,QueryType = "Catch",SurveyId = 2785),"DO NOT USE")
+  expect_warning(result2<-FISH_query(con,QueryType = "Catch",SurveyId = 2785,SurveyPurpose = "Status & Trends"),"Extra efforts removed")
+  expect_equal(nrow(result)-nrow(result2),3)
 })
 
