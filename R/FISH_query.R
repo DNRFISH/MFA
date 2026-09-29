@@ -57,6 +57,16 @@
 #'   associated with catch records for the selected species; efforts with
 #'   no recorded catch of the selected species will therefore be excluded.
 #' 
+#' 
+#' @param Special_Legal_Sizes An optional named numeric vector specifying
+#'   species-specific legal-size overrides when summarizing catch data. 
+#'   Names must correspond to species names in the FISHub \code{SpeciesStrain} 
+#'   table and values must be legal sizes in inches. For example,
+#'   \code{c("Largemouth Bass" = 10, "Brook Trout" = 12)} will replace the
+#'   default legal sizes for those species. Species not included in this
+#'   vector retain their default legal size, if one is defined.
+#'   
+#'   
 #' @details
 #' `FISH_query()` dynamically queries FISHub using the supplied filters and
 #' collects only the resulting records into R. This approach is intended to
@@ -116,6 +126,9 @@
 #' FISH_Data <- FISH_query(con,QueryType = "Efforts",SurveyId = 805)
 #' FISH_Data <- FISH_query(con,QueryType = "Catch",SurveyId = 805)
 #' 
+#' #specify length limits for catch summary 
+#' FISH_Data <- FISH_query(con,QueryType = "Catch",SurveyId = 805,Special_Legal_Sizes = c("Largemouth Bass" = 10))
+#' 
 #' #all surveys from a waterbody
 #' FISH_Data <- FISH_query(con,QueryType = "Survey",WaterBodyName = "Lake Orion")
 #' 
@@ -144,9 +157,9 @@ FISH_query <- function(con,
                        SurveyPurpose=NULL,
                        Year=NULL,
                        GearType=NULL,
-                       Species=NULL) {
-  
-  
+                       Species=NULL,
+                       Special_Legal_Sizes = NULL) {
+
   #check to confirm query type is valid
   if (!QueryType %in% c("Survey", "Efforts", "Catch")) {
     stop("Invalid QueryType. Must be one of: 'Survey', 'Efforts', or 'Catch'.")
@@ -158,7 +171,8 @@ FISH_query <- function(con,
   WaterBody<-tbl(con, "WaterBody") %>%
     filter(IsActive==TRUE)%>% #filter out inactive rows to avoid duplicates Issue #1
     select(MDNRID,WaterBodyName)%>%
-    distinct(MDNRID, WaterBodyName, .keep_all = TRUE) #*should we carry over old waterbody ID for unlocated ones?
+    distinct(MDNRID, WaterBodyName, .keep_all = TRUE)#*should we carry over old waterbody ID for unlocated ones?
+  
   if(!is.null(MDNRID)){
     WaterBody<-WaterBody%>%filter(.data$MDNRID %in% .env$MDNRID)
   }
@@ -193,9 +207,7 @@ FISH_query <- function(con,
   if(!is.null(Year)){
     Survey<-Survey%>%filter(.data$Year %in% .env$Year)
   }
-
   
-
   #SurveyEffort, SurveyEffortDetail and, Gear (issue #9)
   Effort<-tbl(con, "SurveyEffort") %>%
     select(SurveyId,SurveyEffortId,SurveyEffortKey,ModuleId)%>%
@@ -221,17 +233,17 @@ FISH_query <- function(con,
   surveyDat<-WaterBody%>%
     inner_join(Survey,by="MDNRID")
   
-  surveyEffortDat<-surveyDat%>%
-    left_join(Effort,by="SurveyId")
+  surveyEffortDat<-suppressMessages(surveyDat%>%
+    left_join(Effort,by="SurveyId")%>%
+    compute())
 
-  #collect surveyEffort data for use in catch query -- could modify this to stay SQL; would require reworking catchByEffort function
-  surveyEffortDat<-collect(surveyEffortDat)
-
-  #read in catch data
-  catchDat<-catchByEffort(con,surveyEffortDat)
   
+  #read in catch data
+  catchDat<-catchByEffort(con,surveyEffortDat,Special_Legal_Sizes = Special_Legal_Sizes)%>%collect()
+
   #join to surveyEffort data
   allDat<-surveyEffortDat%>%
+    collect()%>%
     full_join(catchDat,by=c("SurveyId","ModuleId"))
   
   if(!is.null(Species)){
@@ -247,11 +259,13 @@ FISH_query <- function(con,
     outDat<-allDat%>%select(colnames(surveyEffortDat))%>%unique()
   }
   if (QueryType=="Catch") {
-    outDat<-allDat
+    outDat<-allDat%>%
+      filter(trimws(GearType)!="LIMNO")
     if(!is.null(Species)){
       message("Note: query only returns surveys/efforts that caught the specified species. It is missing efforts with no capture. Be cautious when calculating CPUE or use CPUE function .")
     }
   }
+  
   
   ##############################################################################
   ###look for catch discrepancies (see issue #17)
@@ -261,7 +275,7 @@ FISH_query <- function(con,
       dplyr::semi_join(
         Catch_discrepancies,
       by = c("SurveyId"))
-    
+
       if (nrow(catchDiscrepancy) > 0) {
         warning(
           "DO NOT USE THESE DATA UNTIL VERIFIED!!!",
@@ -271,7 +285,7 @@ FISH_query <- function(con,
           "\n\nWARNED YOU HAVE BEEN"
         )
       }
-      
+
     }else{
       catchDiscrepancy <- outDat %>%
         dplyr::semi_join(
@@ -280,7 +294,7 @@ FISH_query <- function(con,
           )%>%
         select(SurveyId,SurveyEffortKey)%>%
         unique()
-      
+
       if (nrow(catchDiscrepancy) > 0) {
         warning(
           "DO NOT USE THESE DATA UNTIL VERIFIED!!!",
@@ -294,12 +308,12 @@ FISH_query <- function(con,
 
 
 
-  
+
 
 
   ##############################################################################
   ###status and trends surveys with extra efforts (see issue #19)
-  ############################################################################## 
+  ##############################################################################
   #if it's a survey query, just print the warning; no catch/effort data exported yet, so not an issue
   if(QueryType=="Survey"){
     #flag surveys
@@ -308,7 +322,7 @@ FISH_query <- function(con,
       dplyr::semi_join(
         Status_and_Trends_extra_efforts,
         by = c("SurveyId"))
-    
+
       if (nrow(SnT_extraEfforts_Surveys) > 0) {
         warning(
           "The following SurveyIDs were identified as S&T surveys with extra (non S&T) efforts: \n\n",
@@ -327,7 +341,7 @@ FISH_query <- function(con,
       )%>%
       select(SurveyId,SurveyEffortKey)%>%
       unique()
-    
+
     if (nrow(SnT_extraEfforts) > 0) {
       #if it's a S&T survey, filter out the extra surveys and print a warning
       if(!is.null(SurveyPurpose)){

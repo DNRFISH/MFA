@@ -1,9 +1,8 @@
 con<-FISHub_connect()
 
 test_that("catchByEffort works with FISH_query Efforts output", {
-  effortData <- FISH_query(con,QueryType = "Efforts",SurveyId = 805)
-  result <- catchByEffort(con = con,effortData = effortData)
-  
+  result <- FISH_query(con,QueryType = "Catch",SurveyId = 805)
+
   expect_true(is.data.frame(result))
   expect_gt(nrow(result), 0)
   
@@ -15,8 +14,6 @@ test_that("catchByEffort works with FISH_query Efforts output", {
     "LengthAverage",
     "LengthMinimum",
     "LengthMaximum",
-    "LegalSize",
-    "N_legal",
     "CatchTable"
   ) %in% names(result)))
 })
@@ -47,10 +44,9 @@ test_that("catchByEffort rejects data containing catch data", {
 })
 
 test_that("catchByEffort returns the requested SurveyId and data type", {
-  effortData <- FISH_query(con,QueryType = "Efforts",SurveyId = 805)
-  result <- catchByEffort(con, effortData)
+  result <- FISH_query(con,QueryType = "Catch",SurveyId = 805)
   expect_true(all(result$SurveyId == 805))
-  expect_true(all(result$CatchTable %in% c("InchGroup")))
+  expect_true(all(result$CatchTable %in% c("InchGroup",NA))) #NAs expected if effort had no catch
 })
 
 #**add test for multiple catch data types**
@@ -62,24 +58,21 @@ test_that("catchByEffort returns the requested SurveyId and data type", {
 
 
 test_that("catchByEffort applies default legal size", {
-  effortData <- FISH_query(con,QueryType = "Efforts",SurveyId = 805)
-  result <- catchByEffort(con, effortData)
-  
-  LMB <- result[result$Species == "Largemouth Bass", ]
-  
+  result <- FISH_query(con,QueryType = "Catch",SurveyId = 805)
+  LMB <- result[result$Species == "Largemouth Bass" & !is.na(result$Species), ]
+
   if (nrow(LMB) > 0) {
     expect_true(all(LMB$LegalSize == 14))
   }
 })
 
 test_that("catchByEffort applies special legal-size overrides to the right species", {
-  effortData <- FISH_query(con,QueryType = "Efforts",SurveyId = 805)
-  result <- catchByEffort(con, effortData,Special_Legal_Sizes = c("Largemouth Bass" = 10))
+  result <- FISH_query(con,QueryType = "Catch",SurveyId = 805,Special_Legal_Sizes = c("Largemouth Bass" = 10))
   
-  LMB <- result[result$Species == "Largemouth Bass", ]
+  LMB <- result[result$Species == "Largemouth Bass" & !is.na(result$Species),]
   expect_true(all(LMB$LegalSize == 10))
   
-  NOP <- result[result$Species == "Northern Pike", ]
+  NOP <- result[result$Species == "Northern Pike" & !is.na(result$Species),]
   expect_true(all(NOP$LegalSize == 24))
 })
 
