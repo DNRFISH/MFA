@@ -142,7 +142,7 @@
 #' DBI::dbDisconnect(con)
 #' }
 #' 
-#' @importFrom dplyr tbl filter select distinct left_join rename inner_join full_join collect '%>%' semi_join
+#' @importFrom dplyr tbl filter select distinct left_join rename inner_join full_join collect compute '%>%' semi_join
 #' @importFrom lubridate year
 #' @importFrom rlang .data .env
 #' 
@@ -235,7 +235,7 @@ FISH_query <- function(con,
   
   surveyEffortDat<-suppressMessages(surveyDat%>%
     left_join(Effort,by="SurveyId")%>%
-    compute())
+    dplyr::compute())
 
   
   #read in catch data
