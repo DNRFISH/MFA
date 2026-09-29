@@ -126,14 +126,14 @@ OutputType = "RawData"
 # Return summary statistics
 age_length_table <- ageLengthSummary(
 con = con,
-effortData = effortData,
+effortData = efforts,
 OutputType = "Table"
 )
 
 # Create a length-at-age figure
 ageLengthSummary(
 con = con,
-effortData = effortData,
+effortData = efforts,
 OutputType = "Figure"
 )
 ```
