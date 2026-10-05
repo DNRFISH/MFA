@@ -98,6 +98,10 @@
 #' If no records match the specified filters, an empty data frame is returned
 #' and a message is printed indicating that no data were found.
 #' 
+#' Large vectors supplied to filters (e.g., MDNRID) can cause SQL Server
+#' query-planning "42000" errors. If encountered, do a query of all data and
+#' filter the collected data in R.
+#' 
 #' @return
 #' A data frame containing the requested FISHub data. The structure of the
 #' returned data depends on `QueryType`:
