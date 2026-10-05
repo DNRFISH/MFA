@@ -71,6 +71,17 @@ catch <- FISH_query(
 )
 ```
 
+Catch data include #s of legal sized fish. By default it uses the statewide Minimum Size Limits, but they can also be specifed manually:
+
+``` r
+catch <- FISH_query(
+con,
+QueryType = "Catch",
+SurveyId = 805,
+Special_Legal_Sizes = c("Largemouth Bass" = 10)
+)
+```
+
 ## Fisheries summaries
 
 MFA includes functions for summarizing fisheries data.
