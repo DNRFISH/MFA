@@ -83,17 +83,6 @@ MFA includes functions for summarizing fisheries data.
 catch_summary <- catchSummary(catch)
 ```
 
-### Catch by effort
-
-`catchByEffort()` summarizes catch associated with individual sampling efforts and includes information such as total catch, average length, minimum and maximum length, and legal-sized catch where applicable.
-
-``` r
-catch_by_effort <- catchByEffort(
-con = con,
-effortData = efforts
-)
-```
-
 ### CPUE
 
 `CPUE_byGear()` summarizes catch per unit effort by sampling gear. OutputTypes include "Table" or "Figure"
