@@ -26,6 +26,14 @@ test_that("FISH_query applies individual filters", {
   expect_gt(nrow(result), 0)
   expect_true(all(result$Year == 2024))
   
+  expect_warning(result <- FISH_query(con,QueryType = "Survey",FMU = "CLM"),"DO NOT USE") #expected until Catch_discrepancies addressed
+  expect_gt(nrow(result), 0)
+  expect_true(all(result$FMU == "CLM"))
+  
+  expect_warning(result <- FISH_query(con,QueryType = "Survey",WaterTypeAbbr = "IL"),"DO NOT USE") #expected until Catch_discrepancies addressed
+  expect_gt(nrow(result), 0)
+  expect_true(all(result$WaterTypeAbbr == "IL"))
+  
   expect_warning(result <- FISH_query(con,QueryType = "Survey",SurveyPurpose = "Management Evaluation"),"DO NOT USE") #expected until Catch_discrepancies addressed
   expect_gt(nrow(result), 0)
   expect_true(all(result$SurveyPurpose == "Management Evaluation"))

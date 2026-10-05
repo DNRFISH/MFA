@@ -19,6 +19,16 @@
 #'   names to include in the query. Names must match the corresponding
 #'   `WaterBodyName` values in FISHub. If `NULL`, all waterbodies are
 #'   included, subject to the other filters.
+#'   
+#'@param FMU Character vector specifying one or more Fisheries Management Unit
+#'   codes to include in the query. Must be one of: `"LS"`, `"NLM"`, `"CLM"`,
+#'   `"SLM"`, `"NLH"`, `"SLH"`, and `"LE"`. If `NULL`, all FMUs are
+#'   included, subject to the other filters.
+#'
+#'@param WaterTypeAbbr Character vector specifying one or more waterbody
+#'   types to include in the query. Must be one of: `"GL"` (Great Lakes), 
+#'   `"IL"` (Inland Lake), and `"ISR"` (Inland Stream). If `NULL`, all waterbody 
+#'   types are included, subject to the other filters.
 #'
 #' @param SurveyId Numeric vector specifying one or more Survey IDs to
 #'   include in the query. If `NULL`, all surveys matching the other
@@ -100,7 +110,7 @@
 #' 
 #' Large vectors supplied to filters (e.g., MDNRID) can cause SQL Server
 #' query-planning "42000" errors. If encountered, do a query of all data and
-#' filter the collected data in R.
+#' filter the collected data in R (GitHub issue #22).
 #' 
 #' @return
 #' A data frame containing the requested FISHub data. The structure of the
@@ -136,6 +146,9 @@
 #' #all surveys from a waterbody
 #' FISH_Data <- FISH_query(con,QueryType = "Survey",WaterBodyName = "Lake Orion")
 #' 
+#' #all surveys from a FMU
+#' FISH_Data <- FISH_query(con,QueryType = "Survey",FMU = "CLM")
+#' 
 #' #all SnT surveys from 2025
 #' FISH_Data <- FISH_query(con,QueryType = "Survey",SurveyPurpose = "Status & Trends",Year=2025)
 #' 
@@ -157,6 +170,8 @@ FISH_query <- function(con,
                        QueryType="Survey",
                        MDNRID = NULL,
                        WaterBodyName = NULL,
+                       FMU=NULL,
+                       WaterTypeAbbr=NULL,
                        SurveyId=NULL,
                        SurveyPurpose=NULL,
                        Year=NULL,
@@ -174,7 +189,24 @@ FISH_query <- function(con,
   #WaterBody
   WaterBody<-tbl(con, "WaterBody") %>%
     filter(IsActive==TRUE)%>% #filter out inactive rows to avoid duplicates Issue #1
-    select(MDNRID,WaterBodyName)%>%
+    left_join(tbl(con, "AgencyOrganizationalUnit")%>%select(AgencyOrganizationalUnitId,UnitReportId),by = "AgencyOrganizationalUnitId")%>%
+    left_join(tbl(con, "Water")%>%select(WaterId,WaterTypeId),by = "WaterId")%>%
+    left_join(tbl(con, "WaterType")%>%select(WaterTypeId,Name),by = "WaterTypeId")%>%
+    mutate(
+      FMU = case_when(
+        UnitReportId == "NH  " ~ "NLH",
+        UnitReportId == "SM  " ~ "SLM",
+        UnitReportId == "SH  " ~ "SLH",
+        UnitReportId == "ER  " ~ "LE",
+        UnitReportId == "CM  " ~ "CLM",
+        UnitReportId == "NM  " ~ "NLM",
+        UnitReportId == "ES  " ~ "LS",
+        UnitReportId == "WS  " ~ "LS",
+        TRUE ~ UnitReportId
+      )
+    )%>%
+    select(MDNRID,WaterBodyName,FMU,Name)%>%
+    rename(WaterTypeAbbr=Name)%>%
     distinct(MDNRID, WaterBodyName, .keep_all = TRUE)#*should we carry over old waterbody ID for unlocated ones?
   
   if(!is.null(MDNRID)){
@@ -182,6 +214,12 @@ FISH_query <- function(con,
   }
   if(!is.null(WaterBodyName)){
     WaterBody<-WaterBody%>%filter(.data$WaterBodyName %in% .env$WaterBodyName)
+  }
+  if(!is.null(FMU)){
+    WaterBody<-WaterBody%>%filter(.data$FMU %in% .env$FMU)
+  }
+  if(!is.null(WaterTypeAbbr)){
+    WaterBody<-WaterBody%>%filter(.data$WaterTypeAbbr %in% .env$WaterTypeAbbr)
   }
   
   #Survey, SurveyPurpose, and SurveyStatus ID
