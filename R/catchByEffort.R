@@ -189,23 +189,20 @@ catchByEffort <- function(con,effortData,Special_Legal_Sizes = NULL) {
   #check to see if there was any data in the query
   #*NOTE: need to verify this with a survey that has some data (issue #5)
   if (nrow(scaleEnvelope)>0) {
-    print("New ModuleDataScaleEnvelope data available; Contact MFA team.")
-    # #summarize by survey and species
-    # scaleEnvelopeSum <- scaleEnvelope %>%
-    #   #had to deal with multiple agers- set it up as mean length by serial number
-    #   group_by(SurveyId,SpeciesStrainId,EnvelopeSerialNumber)%>%
-    #   summarize(TotalLengthEntered=mean(TotalLengthEntered,na.rm = T), .groups = "drop")%>%
-    #   left_join(legalSizeTibSpeciesStr%>%select(SpeciesStrainId,LegalSize),by="SpeciesStrainId")%>%
-    #   group_by(SurveyId,SpeciesStrainId,LegalSize) %>%
-    #   summarize(
-    #     TotalNumberCaught = sum(n(), na.rm = TRUE),
-    #     LengthAverage = round(mean(TotalLengthEntered, na.rm = TRUE),2),
-    #     LengthMinimum = min(TotalLengthEntered, na.rm = TRUE),
-    #     LengthMaximum = max(TotalLengthEntered, na.rm = TRUE),
-    #     N_legal = sum(count[TotalLengthEntered >= LegalSize], na.rm = FALSE), #want this to stay NA if no legal size specified
-    #     CatchTable = "ScaleEnvelope",
-    #     .groups = "drop"
-    #   )
+    #summarize by survey and species
+    scaleEnvelopeSum <- scaleEnvelope %>%
+      left_join(effortData%>%select(SurveyId,ModuleId)%>%collect(),by="ModuleId")%>%
+      left_join(legalSizeTibSpeciesStr%>%select(SpeciesStrainId,LegalSize),by="SpeciesStrainId")%>%
+      group_by(SurveyId,ModuleId,SpeciesStrainId,LegalSize) %>%
+      summarize(
+        TotalNumberCaught = n(),
+        LengthAverage = round(mean(TotalLengthEntered, na.rm = TRUE),2),
+        LengthMinimum = min(TotalLengthEntered, na.rm = TRUE),
+        LengthMaximum = max(TotalLengthEntered, na.rm = TRUE),
+        N_legal = sum(TotalLengthEntered >= LegalSize, na.rm = FALSE), #want this to stay NA if no legal size specified
+        CatchTable = "ScaleEnvelope",
+        .groups = "drop"
+      )
   }
   
   
@@ -216,8 +213,8 @@ catchByEffort <- function(con,effortData,Special_Legal_Sizes = NULL) {
   #*Note: for now keeping the three CatchTables separate to help with validation- could merge these in the future?
   tables_list <- list(
     species = if (exists("catchSpeciesSum")) catchSpeciesSum else NULL,
-    inch    = if (exists("catchInchSum")) catchInchSum else NULL
-    #scale   = if (exists("scaleEnvelopeSum")) scaleEnvelopeSum else NULL #add this back in whenever we have data in this table
+    inch    = if (exists("catchInchSum")) catchInchSum else NULL,
+    scale   = if (exists("scaleEnvelopeSum")) scaleEnvelopeSum else NULL
   )
   
   #combine tables
