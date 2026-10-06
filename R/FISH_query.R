@@ -141,7 +141,12 @@
 #' FISH_Data <- FISH_query(con,QueryType = "Catch",SurveyId = 805)
 #' 
 #' #specify length limits for catch summary 
-#' FISH_Data <- FISH_query(con,QueryType = "Catch",SurveyId = 805,Special_Legal_Sizes = c("Largemouth Bass" = 10))
+#' FISH_Data <- FISH_query(
+#' con,
+#' QueryType = "Catch",
+#' SurveyId = 805,
+#' Special_Legal_Sizes = c("Largemouth Bass" = 10)
+#' )
 #' 
 #' #all surveys from a waterbody
 #' FISH_Data <- FISH_query(con,QueryType = "Survey",WaterBodyName = "Lake Orion")
