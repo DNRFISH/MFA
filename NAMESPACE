@@ -13,6 +13,7 @@ importFrom(dplyr,
   arrange,
   bind_rows,
   case_when,
+  coalesce,
   collect,
   compute,
   distinct,
@@ -55,4 +56,7 @@ importFrom(rlang,
   .data,
   .env
 )
-importFrom(stats,sd)
+importFrom(stats,
+  sd,
+  weighted.mean
+)
