@@ -14,12 +14,12 @@ queries the \code{ModuleDataScaleEnvelope}, \code{AgeClass},
 \code{ModuleDataCatchSampleByInchGroup} tables through this connection.}
 
 \item{effortData}{A data frame containing survey and effort
-information, typically returned by \code{\link{FISH_query}} with an
-effort-related query. The data must contain at least \code{SurveyId} and
-\code{ModuleId}. \code{SurveyId} identifies the surveys for which
-age-length observations are retrieved, while \code{ModuleId} identifies
-the sampling modules used to obtain catch-by-inch-group data for the
-weighted length-at-age calculation.}
+information returned by \code{\link{FISH_query}} with QueryType = Efforts
+query. The data must contain at least \code{SurveyId} and \code{ModuleId}.
+\code{SurveyId} identifies the surveys for which age-length observations
+are retrieved, while \code{ModuleId} identifies the sampling modules used
+to obtain catch-by-inch-group data for the weighted length-at-age
+calculation.}
 
 \item{OutputType}{Character string specifying the type of output to
 return. Must be one of \code{"RawData"}, \code{"Table"}, or
@@ -158,7 +158,7 @@ con <- FISHub_connect()
 effortData <- FISH_query(
   con,
   QueryType = "Efforts",
-  SurveyId = 1162
+  SurveyId = 805
 )
 
 # Return processed individual age-length observations

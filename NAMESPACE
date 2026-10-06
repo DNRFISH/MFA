@@ -5,7 +5,6 @@ export(FISH_query)
 export(FISHub_connect)
 export(RSD)
 export(ageLengthSummary)
-export(catchByEffort)
 export(catchSummary)
 export(detectionByYear)
 export(lengthFreqByEffort)
@@ -14,8 +13,8 @@ importFrom(dplyr,
   arrange,
   bind_rows,
   case_when,
-  coalesce,
   collect,
+  compute,
   distinct,
   filter,
   full_join,
@@ -27,6 +26,7 @@ importFrom(dplyr,
   n_distinct,
   rename,
   select,
+  semi_join,
   slice_max,
   summarize,
   tbl,
@@ -55,7 +55,4 @@ importFrom(rlang,
   .data,
   .env
 )
-importFrom(stats,
-  sd,
-  weighted.mean
-)
+importFrom(stats,sd)

@@ -9,11 +9,14 @@ FISH_query(
   QueryType = "Survey",
   MDNRID = NULL,
   WaterBodyName = NULL,
+  FMU = NULL,
+  WaterTypeAbbr = NULL,
   SurveyId = NULL,
   SurveyPurpose = NULL,
   Year = NULL,
   GearType = NULL,
-  Species = NULL
+  Species = NULL,
+  Special_Legal_Sizes = NULL
 )
 }
 \arguments{
@@ -32,6 +35,16 @@ included, subject to the other filters.}
 names to include in the query. Names must match the corresponding
 \code{WaterBodyName} values in FISHub. If \code{NULL}, all waterbodies are
 included, subject to the other filters.}
+
+\item{FMU}{Character vector specifying one or more Fisheries Management Unit
+codes to include in the query. Must be one of: \code{"LS"}, \code{"NLM"}, \code{"CLM"},
+\code{"SLM"}, \code{"NLH"}, \code{"SLH"}, and \code{"LE"}. If \code{NULL}, all FMUs are
+included, subject to the other filters.}
+
+\item{WaterTypeAbbr}{Character vector specifying one or more waterbody
+types to include in the query. Must be one of: \code{"GL"} (Great Lakes),
+\code{"IL"} (Inland Lake), and \code{"ISR"} (Inland Stream). If \code{NULL}, all waterbody
+types are included, subject to the other filters.}
 
 \item{SurveyId}{Numeric vector specifying one or more Survey IDs to
 include in the query. If \code{NULL}, all surveys matching the other
@@ -69,6 +82,14 @@ species values in FISHub. If \code{NULL}, records for all species are
 included. When specified, the query returns only surveys and efforts
 associated with catch records for the selected species; efforts with
 no recorded catch of the selected species will therefore be excluded.}
+
+\item{Special_Legal_Sizes}{An optional named numeric vector specifying
+species-specific legal-size overrides when summarizing catch data.
+Names must correspond to species names in the FISHub \code{SpeciesStrain}
+table and values must be legal sizes in inches. For example,
+\code{c("Largemouth Bass" = 10, "Brook Trout" = 12)} will replace the
+default legal sizes for those species. Species not included in this
+vector retain their default legal size, if one is defined.}
 }
 \value{
 A data frame containing the requested FISHub data. The structure of the
@@ -122,6 +143,10 @@ considered when using the returned data to calculate catch rates or CPUE.
 
 If no records match the specified filters, an empty data frame is returned
 and a message is printed indicating that no data were found.
+
+Large vectors supplied to filters (e.g., MDNRID) can cause SQL Server
+query-planning "42000" errors. If encountered, do a query of all data and
+filter the collected data in R (GitHub issue #22).
 }
 \examples{
 \dontrun{
@@ -133,8 +158,14 @@ FISH_Data <- FISH_query(con,QueryType = "Survey",SurveyId = 805)
 FISH_Data <- FISH_query(con,QueryType = "Efforts",SurveyId = 805)
 FISH_Data <- FISH_query(con,QueryType = "Catch",SurveyId = 805)
 
+#specify length limits for catch summary 
+FISH_Data <- FISH_query(con,QueryType = "Catch",SurveyId = 805,Special_Legal_Sizes = c("Largemouth Bass" = 10))
+
 #all surveys from a waterbody
 FISH_Data <- FISH_query(con,QueryType = "Survey",WaterBodyName = "Lake Orion")
+
+#all surveys from a FMU
+FISH_Data <- FISH_query(con,QueryType = "Survey",FMU = "CLM")
 
 #all SnT surveys from 2025
 FISH_Data <- FISH_query(con,QueryType = "Survey",SurveyPurpose = "Status & Trends",Year=2025)

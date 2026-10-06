@@ -5,7 +5,7 @@
 #' 
 #' See issue #19
 #'
-#'As of 9/11: "Also – I [KK] think the list is pretty comprehensive. Kevin did 
+#'As of 9/11: "Also – I (KK) think the list is pretty comprehensive. Kevin did 
 #'quite a bit of digging and Kevin’s list already included all but 1 of John’s list. 
 #'From what I gather, it is just the extra shocking efforts that are problematic 
 #'and I don’t think that all of the FMU’s are doing it. For example, while NLM 
