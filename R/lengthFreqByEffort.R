@@ -138,10 +138,10 @@ lengthFreqByEffort<-function(con,effortData,OutputType="Table"){
   if (nrow(catchInch)>0) {
     catchInchSum<-catchInch%>%
       #add surveyId
-      left_join(effortData%>%select(SurveyId,ModuleId),by="ModuleId")%>%
+      left_join(effortData%>%select(SurveyId,ModuleId,SurveyEffortKey),by="ModuleId")%>%
       mutate(
         count = NumberCaughtUnmarked) %>% #only use unmarked here to avoid double counting fish
-      group_by(SurveyId,ModuleId,SpeciesStrainId,InchGroup) %>%
+      group_by(SurveyId,SurveyEffortKey,SpeciesStrainId,InchGroup) %>%
       summarize(
         TotalNumberCaught = sum(count, na.rm = TRUE),
         CatchTable = "InchGroup",
@@ -193,7 +193,7 @@ lengthFreqByEffort<-function(con,effortData,OutputType="Table"){
   
   combinedSum <- bind_rows(tables_list[!sapply(tables_list, is.null)])%>%
     left_join(SpeciesStrain,by = "SpeciesStrainId")%>%
-    select(SurveyId,ModuleId,Species,InchGroup,TotalNumberCaught,CatchTable)
+    select(SurveyId,SurveyEffortKey,Species,InchGroup,TotalNumberCaught,CatchTable)
   
   if(OutputType=="Table"){
     return(combinedSum)

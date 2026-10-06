@@ -11,7 +11,7 @@ test_that("lengthFreqByEffort returns a length-frequency table", {
   
   expect_true(all(c(
     "SurveyId",
-    "ModuleId",
+    "SurveyEffortKey",
     "Species",
     "InchGroup",
     "TotalNumberCaught",
@@ -26,7 +26,7 @@ test_that("lengthFreqByEffort uses the requested effort modules", {
   effortData <- FISH_query(con,QueryType = "Efforts",SurveyId = 805)
   result <- lengthFreqByEffort(con = con,effortData = effortData)
   
-  expect_true(all(result$ModuleId %in% effortData$ModuleId))
+  expect_true(all(result$SurveyEffortKey %in% effortData$SurveyEffortKey))
   expect_true(all(result$SurveyId %in% effortData$SurveyId))
 })
 
@@ -50,7 +50,7 @@ test_that("lengthFreqByEffort preserves module and inch-group detail", {
     nrow(result),
     nrow(unique(result[c(
       "SurveyId",
-      "ModuleId",
+      "SurveyEffortKey",
       "Species",
       "InchGroup"
     )]))
