@@ -8,7 +8,7 @@
 #' catch tables.
 #'
 #' @param con Database connection.
-#' @param effortData Survey effort data.
+#' @param effortData Survey effort data in SQL format from [FISH_query()].
 #' @param Special_Legal_Sizes Optional named vector of species-specific
 #'   legal sizes that overrides the default legal sizes.
 #'
