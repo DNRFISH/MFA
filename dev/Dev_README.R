@@ -10,10 +10,11 @@ devtools::load_all()
 ##After making edits
 #update documenation
 devtools::document()
-#run a package test
+#run a package check
 devtools::check()
-# #run the package tests - note this is included in check()
-# devtools::test()
+devtools::check(args = "--no-tests") #check with no tests; was having issue with the test portion included here as of 10/6/26
+#run the package tests
+devtools::test()
 
 #build package
 
