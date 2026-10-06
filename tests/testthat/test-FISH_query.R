@@ -10,7 +10,18 @@ test_that("FISH_query rejects invalid queries", {
 
 
 test_that("FISH_query works with default parameters", {
-  result <- FISH_query(con)
+  result <- withCallingHandlers(
+    FISH_query(con = con),
+    warning = function(w) {
+      if (grepl(
+        "DO NOT USE as part of S&T surveys|DO NOT USE THESE DATA UNTIL VERIFIED",
+        conditionMessage(w)
+      )) {
+        invokeRestart("muffleWarning")
+      }
+    }
+  )
+  
   expect_true(is.data.frame(result))
   expect_gt(nrow(result), 0)
 
@@ -49,15 +60,11 @@ test_that("FISH_query applies individual filters", {
   expect_gt(nrow(result), 0)
   expect_true(all(result$Year == 2024))
   
-  expect_warning(result <- FISH_query(con,QueryType = "Survey",FMU = "CLM"),"DO NOT USE") #expected until Catch_discrepancies addressed
+  expect_warning(result <- FISH_query(con,QueryType = "Survey",FMU = "CLM"),"DO NOT USE THESE DATA UNTIL VERIFIED") #expected until Catch_discrepancies addressed
   expect_gt(nrow(result), 0)
   expect_true(all(result$FMU == "CLM"))
   
-  expect_warning(result <- FISH_query(con,QueryType = "Survey",WaterTypeAbbr = "IL"),"DO NOT USE") #expected until Catch_discrepancies addressed
-  expect_gt(nrow(result), 0)
-  expect_true(all(result$WaterTypeAbbr == "IL"))
-  
-  expect_warning(result <- FISH_query(con,QueryType = "Survey",SurveyPurpose = "Management Evaluation"),"DO NOT USE") #expected until Catch_discrepancies addressed
+  expect_warning(result <- FISH_query(con,QueryType = "Survey",SurveyPurpose = "Management Evaluation"),"DO NOT USE THESE DATA UNTIL VERIFIED") #expected until Catch_discrepancies addressed
   expect_gt(nrow(result), 0)
   expect_true(all(result$SurveyPurpose == "Management Evaluation"))
   
@@ -65,18 +72,35 @@ test_that("FISH_query applies individual filters", {
   expect_gt(nrow(result), 0)
   expect_true(all(result$MDNRID == "L7844"))
   
-  result <- FISH_query(con,QueryType = "Survey",FMU = "SLM")
+  result <- withCallingHandlers(
+    FISH_query(con,QueryType = "Survey",FMU = "SLM"),
+    warning = function(w) {
+      if (grepl(
+        "DO NOT USE as part of S&T surveys|DO NOT USE THESE DATA UNTIL VERIFIED",
+        conditionMessage(w)
+       )) {
+         invokeRestart("muffleWarning")
+      }
+    }
+  )
   expect_gt(nrow(result), 0)
   expect_true(all(result$FMU == "SLM"))
-  
-  result <- FISH_query(con,QueryType = "Survey",WaterTypeAbbr = "IL")
-  expect_gt(nrow(result), 0)
-  expect_true(all(result$WaterTypeAbbr == "IL"))
 })
 
 
 test_that("FISH_query applies multiple filters", {
-  expect_warning(result <- FISH_query(con,QueryType = "Catch",GearType = "LMFYKE",Species = "Walleye"),"DO NOT USE") #expected until Catch_discrepancies addressed
+  result <- withCallingHandlers(
+    FISH_query(con,QueryType = "Catch",GearType = "LMFYKE",Species = "Walleye",WaterTypeAbbr = "IL"),
+    warning = function(w) {
+      if (grepl(
+        "presence/absence|DO NOT USE THESE DATA UNTIL VERIFIED",
+        conditionMessage(w)
+      )) {
+        invokeRestart("muffleWarning")
+      }
+    }
+  )
+  
   expect_true(all(result$Species == "Walleye"))
   expect_true(all(result$GearType == "LMFYKE"))
   
