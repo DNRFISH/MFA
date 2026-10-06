@@ -304,10 +304,12 @@ FISH_query <- function(con,
     outDat<-allDat%>%
       filter(trimws(GearType)!="LIMNO")
     if(!is.null(Species)){
-      message("Note: query only returns surveys/efforts that caught the specified species. It is missing efforts with no capture. Be cautious when calculating CPUE or use CPUE function .")
+      message("Query only returns surveys/efforts that caught the specified species. It is missing efforts with no capture. Be cautious when calculating CPUE!")
+    }
+    if(0 %in% outDat$TotalNumberCaught){
+      warning("Query contains potential presence/absence data, identifed with zeros (0). Be cautious when using data!")
     }
   }
-  
   
   ##############################################################################
   ###look for catch discrepancies (see issue #17)
@@ -412,8 +414,6 @@ FISH_query <- function(con,
       }
     }
     }
-    
-  
   ################################################################################
   #print if no data found
   if(nrow(outDat)==0){
