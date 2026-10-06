@@ -85,30 +85,82 @@ test_that("FISH_query applies multiple filters", {
   expect_true(all(result$Species == "Largemouth Bass"))
 })
 
-#**update this once I identify an effort** issue #21
-# test_that("FISH_query retains efforts with zero catch", {
-#   result <- FISH_query(
-#     con,
-#     QueryType = "Catch",
-#     SurveyId = SOME_KNOWN_SURVEY
-#   )
-#   
-#   expect_true(SOME_KNOWN_EFFORT_ID %in% result$SurveyEffortId)
-# })
-
-
-test_that("Catch query returns the requested SurveyId and catch data type", {
+test_that("Catch query returns the requested catch data type", {
   result <- FISH_query(con,QueryType = "Catch",SurveyId = 805)
   expect_true(all(result$SurveyId == 805))
   expect_true(all(result$CatchTable %in% c("InchGroup",NA))) #NAs expected if effort had no catch
+  expect_true(8 %in% result$SurveyEffortKey) #no catch
+  
+  result <- FISH_query(con,QueryType = "Catch",SurveyId = 70)
+  expect_true(all(result$CatchTable %in% c("ScaleEnvelope")))
 })
 
-# #**add test for multiple catch data types**
-#   test_that("Catch query returns multiple catch data types", {
-#     result <- FISH_query(con,QueryType = "Catch",SurveyId = 17075)
-#     expect_true(SPECIFY COUNTS)
-#   })
+test_that("Catch query returns multiple catch data types", {
+  result <- FISH_query(con,QueryType = "Catch",SurveyId = 3639)
+  expect_true(all(result$CatchTable %in% c("Species","InchGroup"))) 
+    
+  speciesCount<-sum(result%>%filter(CatchTable=="Species")%>%select(TotalNumberCaught))
+  expect_true(speciesCount==59)
+  inchCount<-sum(result%>%filter(CatchTable=="InchGroup")%>%select(TotalNumberCaught))
+  expect_true(inchCount==21)
+})
 
+# #code to look for surveys with multiple catch data types
+# catchSpecies <- tbl(con, "ModuleDataCatchBySpecies") 
+# catchInch <- tbl(con, "ModuleDataCatchSampleByInchGroup") 
+# scaleEnvelope <- tbl(con, "ModuleDataScaleEnvelope")
+# 
+# moduleData <- tbl(con, "ModuleData") %>%
+#   select(ModuleDataId, ModuleId)
+# 
+# surveyEffort <- tbl(con, "SurveyEffort") %>%
+#   select(ModuleId, SurveyId)
+# 
+# surveyRepeats <- union_all(
+#   catchSpecies %>%
+#     select(ModuleDataId) %>%
+#     distinct() %>%
+#     inner_join(moduleData, by = "ModuleDataId") %>%
+#     inner_join(surveyEffort, by = "ModuleId") %>%
+#     select(SurveyId) %>%
+#     distinct() %>%
+#     mutate(Source = "CatchSpecies"),
+#   
+#   catchInch %>%
+#     select(ModuleDataId) %>%
+#     distinct() %>%
+#     inner_join(moduleData, by = "ModuleDataId") %>%
+#     inner_join(surveyEffort, by = "ModuleId") %>%
+#     select(SurveyId) %>%
+#     distinct() %>%
+#     mutate(Source = "CatchInch"),
+#   
+#   scaleEnvelope %>%
+#     select(ModuleDataId) %>%
+#     distinct() %>%
+#     inner_join(moduleData, by = "ModuleDataId") %>%
+#     inner_join(surveyEffort, by = "ModuleId") %>%
+#     select(SurveyId) %>%
+#     distinct() %>%
+#     mutate(Source = "ScaleEnvelope")) %>%
+#   group_by(SurveyId) %>%
+#   summarise(
+#     nTables = n(),
+#     Tables = str_flatten(Source, collapse = ", "),
+#     .groups = "drop") %>%
+#   filter(nTables > 1)%>%
+#   collect()
+# 
+# #subset to ones that DON'T have catch discrepancies
+# surveyRepeatsSubset<-surveyRepeats%>%
+#   filter(!SurveyId%in%Catch_discrepancies$SurveyId)
+
+test_that("Catch query returns P/A data", {
+  expect_warning(result <- FISH_query(con,QueryType = "Catch",SurveyId = 142),"presence/absence")
+  expect_true(sum(result$TotalNumberCaught == 0)==16)
+  expect_true(sum(result$TotalNumberCaught > 0)==2)
+  
+})
 
 test_that("FISH_query applies default legal size", {
   result <- FISH_query(con,QueryType = "Catch",SurveyId = 805)
