@@ -242,7 +242,7 @@ CPUE_byGear<-function(catchData,OutputType="Table"){
       facet_wrap(~GearType,scales = "free")+
       theme_classic()+
       scale_fill_viridis_d()+
-      xlab("Species")+ylab("CPUE (net lift or seconds E-fishing)")+labs(fill="Survey")+
+      xlab("Species")+ylab("CPUE (net lift or minutes E-fishing)")+labs(fill="Survey")+
       theme(
         axis.text.x = element_text(angle = 90,vjust = 0.5, hjust = 1)
       )
