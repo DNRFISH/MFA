@@ -11,6 +11,9 @@
 #' @param effortData Survey effort data in SQL format from [FISH_query()].
 #' @param Special_Legal_Sizes Optional named vector of species-specific
 #'   legal sizes that overrides the default legal sizes.
+#'   
+#' @importFrom stats weighted.mean 
+#' @importFrom dplyr coalesce
 #'
 #' @return A data frame containing catch information summarized by survey,
 #'   effort, and species.
