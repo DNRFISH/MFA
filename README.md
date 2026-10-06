@@ -176,6 +176,16 @@ OutputType = "Figure"
 ### Relative stock density
 
 `RSD()` calculates relative stock density using Gabelhouse length categories.
+For example, RSD-Trophy is calculated as:
+
+$$
+RSD\text{-}T =
+\frac{N_{Trophy}}
+{N_{Stock} + N_{Quality} + N_{Preferred} + N_{Memorable} + N_{Trophy}}
+\times 100
+$$
+
+, where \(N_{Trophy}\), \(N_{Memorable}\), etc. represent the number of fish meeting the minimum length criterion for each respective RSD category.
 
 ``` r
 rsd <- RSD(length_frequency)
@@ -188,7 +198,6 @@ rsd <- RSD(length_frequency)
 | `MFA_connect()`        | Connect to the FISHub database            |
 | `FISH_query()`         | Query survey, effort, and catch data      |
 | `catchSummary()`       | Summarize catch                           |
-| `catchByEffort()`      | Summarize catch by sampling effort        |
 | `CPUEbyGear()`         | Calculate catch per unit effort by gear   |
 | `lengthFreqByEffort()` | Summarize length-frequency data by effort |
 | `ageLengthSummary()`   | Summarize age and length data             |
