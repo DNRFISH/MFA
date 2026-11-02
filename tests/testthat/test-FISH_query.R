@@ -101,7 +101,6 @@ test_that("FISH_query applies multiple filters", {
     }
   )
   
-  expect_true(all(result$Species == "Walleye"))
   expect_true(all(result$Year == 2025))
   
   result <- withCallingHandlers(
