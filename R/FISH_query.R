@@ -240,11 +240,11 @@ FISH_query <- function(con,
       Survey<-Survey%>%filter(.data$SurveyId %in% .env$SurveyId)
     }
   if(!is.null(SurveyPurpose)){
-    if(!SurveyPurpose%in%c("Creel Census", "Discretionary Survey", "Fish Community", "General Survey",
+    if(!any(SurveyPurpose%in%c("Creel Census", "Discretionary Survey", "Fish Community", "General Survey",
                            "Limnology", "Management Evaluation", "Population Estimate",
                            "Population Reduction", "Recruitment Evaluation", "Recruitment v Evaluation",
                            "Research Project", "Special Study", "Species Evaluation", "Status & Trends",
-                           "Stocking Evaluation")){
+                           "Stocking Evaluation"))){
       stop("Invalid SurveyPurpose. Must be one of: Creel Census, Discretionary Survey, Fish Community, General Survey,Limnology,
       Management Evaluation, Population Estimate,Population Reduction, Recruitment Evaluation, Recruitment v Evaluation,
       Research Project, Special Study, Species Evaluation, Status & Trends,Stocking Evaluation")
@@ -334,8 +334,8 @@ FISH_query <- function(con,
           distinct(SurveyId)
         
         outDat <- surveyDat %>%
-          inner_join(speciesSurveys, by = "SurveyId") %>%
           collect() %>%
+          inner_join(speciesSurveys, by = "SurveyId") %>%
           distinct()
       }
       
@@ -391,7 +391,7 @@ FISH_query <- function(con,
         warning(
           "DO NOT USE THESE DATA UNTIL VERIFIED!!!",
           "\n\nThe following SurveyIDs were identified with catch discrepancies: \n\n",
-          paste0(paste(catchDiscrepancy$SurveyId),collapse = "\n"),
+          paste0(paste(sort(catchDiscrepancy$SurveyId)),collapse = ", "),
           "\n\nSee data(Catch_discrepancies) for reference. Contact MFA team for more information.",
           "\n\nWARNED YOU HAVE BEEN"
         )
@@ -410,7 +410,9 @@ FISH_query <- function(con,
           warning(
             "DO NOT USE THESE DATA UNTIL VERIFIED!!!",
             "\n\nThe following SurveyID-SurveyEffortKey combinations were identified with catch discrepancies: \n\n",
-            paste(paste(catchDiscrepancy$SurveyId, catchDiscrepancy$SurveyEffortKey, sep = "-"),collapse = "\n"),
+            catchDiscrepancy %>%
+              arrange(SurveyId, SurveyEffortKey) %>%
+              with(paste(paste(SurveyId, SurveyEffortKey, sep = "-"), collapse = ", ")),
             "\n\nSee data(Catch_discrepancies) for reference. Contact MFA team for more information.",
             "\n\nWARNED YOU HAVE BEEN"
           )
@@ -437,7 +439,7 @@ FISH_query <- function(con,
       if (nrow(SnT_extraEfforts_Surveys) > 0) {
         warning(
           "The following SurveyIDs were identified as S&T surveys with extra (non S&T) efforts: \n\n",
-          paste(paste(SnT_extraEfforts_Surveys$SurveyId),collapse = "\n"),
+          paste(paste(sort(SnT_extraEfforts_Surveys$SurveyId)),collapse = ", "),
           "\n\nDO NOT USE as part of S&T surveys. Use SurveyPurpose='Status & Trends' to filter out.",
           "\nSee data(Status_and_Trends_extra_efforts) for reference. Contact MFA team for more information."
         )
@@ -464,18 +466,16 @@ FISH_query <- function(con,
               by = c("SurveyId","SurveyEffortKey") #didn't both with species since the codes are slightly different
             )
           warning("Extra efforts removed from query: ",
-                    paste(
-                      paste(SnT_extraEfforts$SurveyId, SnT_extraEfforts$SurveyEffortKey, sep = "-"),
-                    collapse = "\n"
-                    )
+                  SnT_extraEfforts %>%
+                    arrange(SurveyId, SurveyEffortKey) %>%
+                    with(paste(paste(SurveyId, SurveyEffortKey, sep = "-"), collapse = ", "))
                   )
         }
       }else{
         warning("The following SurveyID-SurveyEffortKey combinations were identified as S&T surveys with extra (non S&T) efforts:\n\n",
-                paste(
-                  paste(SnT_extraEfforts$SurveyId, SnT_extraEfforts$SurveyEffortKey, sep = "-"),
-                  collapse = "\n"
-                ),
+                SnT_extraEfforts %>%
+                  arrange(SurveyId, SurveyEffortKey) %>%
+                  with(paste(paste(SurveyId, SurveyEffortKey, sep = "-"), collapse = ", ")),
                 "\n\nDO NOT USE as part of S&T surveys. Use SurveyPurpose='Status & Trends' to filter out.",
                 "\n\nWARNED YOU HAVE BEEN")
       }
