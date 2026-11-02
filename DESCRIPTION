@@ -1,10 +1,10 @@
 Package: MFA
 Title: Michigan Fisheries Analysis
-Version: 2.0.0.9000
+Version: 2.0.0
 Authors@R: 
     person("Lucas", "Nathan", , "nathanl@michigan.gov", role = c("aut", "cre"))
 Description: Provides tools for querying and summarizing fisheries data from FISHub and other data sources for MDNR-Fisheries.
-License: TBD
+License: file License
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 Imports:
@@ -15,14 +15,13 @@ Imports:
     ggplot2,
     lubridate,
     tibble,
-    rlang
+    rlang,
+    shiny,
+    DT
 Depends: 
     R (>= 3.5)
 LazyData: true
 Config/roxygen2/version: 8.1.0
 Suggests: 
-    testthat (>= 3.0.0),
-    shiny,
-    bslib,
-    DT
+    testthat (>= 3.0.0)
 Config/testthat/edition: 3
