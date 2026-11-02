@@ -226,8 +226,8 @@ CPUE_byGear<-function(catchData,OutputType="Table"){
       Unit_alt = if_else(
         Unit_alt == "Seconds", "Minutes", Unit_alt
       ),
-      CPUE=TotalNumberCaught/TotalEffort,
-      CPUE_alt=TotalNumberCaught/TotalEffort_alt)%>%
+      CPUE=round(TotalNumberCaught/TotalEffort,2),
+      CPUE_alt=round(TotalNumberCaught/TotalEffort_alt),2)%>%
     select(WaterBodyName,SurveyId,GearType,Species,TotalNumberCaught,
            TotalEffort,Unit,CPUE,
            TotalEffort_alt,Unit_alt,CPUE_alt)
