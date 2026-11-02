@@ -93,7 +93,7 @@ catchByEffort <- function(con,effortData,Special_Legal_Sizes = NULL) {
       LegalSize_override = as.numeric(Special_Legal_Sizes)
     )
     legalSizeTib <- legalSizeTib %>%
-      left_join(override_tbl, by = "Species") %>%
+      full_join(override_tbl, by = "Species") %>%
       mutate(
         LegalSize = coalesce(LegalSize_override, LegalSize)
       ) %>%
