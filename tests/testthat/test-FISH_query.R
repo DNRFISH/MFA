@@ -90,6 +90,21 @@ test_that("FISH_query applies individual filters", {
 
 test_that("FISH_query applies multiple filters", {
   result <- withCallingHandlers(
+    FISH_query(con,QueryType = "Survey",Year = 2025,Species = "Walleye"),
+    warning = function(w) {
+      if (grepl(
+        "presence/absence|DO NOT USE THESE DATA UNTIL VERIFIED",
+        conditionMessage(w)
+      )) {
+        invokeRestart("muffleWarning")
+      }
+    }
+  )
+  
+  expect_true(all(result$Species == "Walleye"))
+  expect_true(all(result$Year == 2025))
+  
+  result <- withCallingHandlers(
     FISH_query(con,QueryType = "Catch",GearType = "LMFYKE",Species = "Walleye",WaterTypeAbbr = "IL"),
     warning = function(w) {
       if (grepl(
