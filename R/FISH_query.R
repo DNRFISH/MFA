@@ -255,66 +255,128 @@ FISH_query <- function(con,
     Survey<-Survey%>%filter(.data$Year %in% .env$Year)
   }
   
-  #SurveyEffort, SurveyEffortDetail and, Gear (issue #9)
-  Effort<-tbl(con, "SurveyEffort") %>%
-    select(SurveyId,SurveyEffortId,SurveyEffortKey,ModuleId)%>%
-    left_join(tbl(con, "SurveyEffortDetail"),by="SurveyEffortId")%>%
-    left_join(tbl(con, "Gear") %>%select(GearId, GearType),by="GearId")%>%
-    mutate(GearType<-trimws(GearType))%>%
-    select(SurveyId,SurveyEffortId,SurveyEffortKey,ModuleId,BeginningEffortTimestamp, EndingEffortTimestamp, GearType,EffortNumberofGearUsed, EffortTotalQuantity, 
-              EffortTotalMeasurement, EffortAlternateQuantity, EffortAlternateMeasurement)
-
-  if(!is.null(GearType)){
-    if(!GearType%in%c("ANGLING", "BACKSHK", "BOOMSHK", "Envelop", "EXPGNET", "GLGNET",
-                      "LMFYKE", "LIMNO", "MNWTRAP", "OTHER", "PhotoPt", "PLNKNET",
-                      "SEINE", "SETHKS", "SMFYKE", "SRGNET", "STRMSHK", "TOXSAM",
-                      "TRAPNET", "TRAWL", "VGNET")){
-      stop("GearType must be one of ANGLING,BACKSHK,BOOMSHK,Envelop,EXPGNET,GLGNET,LMFYKE,LIMNO,MNWTRAP,OTHER,PhotoPt,PLNKNET,SEINE,SETHKS,SMFYKE,SRGNET,STRMSHK,TOXSAM,TRAPNET,TRAWL,VGNET")
-    }
-
-    message("Note: query only returns surveys/efforts that had the specified gears.")
-    Effort<-Effort%>%filter(.data$GearType %in% .env$GearType)
-  }
-  
-  #do joins
+  #join survey and waterbody data
   surveyDat<-WaterBody%>%
     inner_join(Survey,by="MDNRID")
   
-  surveyEffortDat<-suppressMessages(surveyDat%>%
-    left_join(Effort,by="SurveyId")%>%
-    dplyr::compute())
-
-  
-  #read in catch data
-  catchDat<-catchByEffort(con,surveyEffortDat,Special_Legal_Sizes = Special_Legal_Sizes)%>%collect()
-
-  #join to surveyEffort data
-  allDat<-surveyEffortDat%>%
-    collect()%>%
-    full_join(catchDat,by=c("SurveyId","ModuleId"))
-  
-  if(!is.null(Species)){
-    allDat<-allDat%>%filter(.data$Species %in% .env$Species)
-  }
-
-  
-  #specify output based on query
-  if (QueryType=="Survey") {
-    outDat<-allDat%>%select(colnames(surveyDat))%>%unique()
-  }
-  if (QueryType=="Efforts") {
-    outDat<-allDat%>%select(colnames(surveyEffortDat))%>%unique()
-  }
-  if (QueryType=="Catch") {
-    outDat<-allDat%>%
-      filter(trimws(GearType)!="LIMNO")
-    if(!is.null(Species)){
-      message("Query only returns surveys/efforts that caught the specified species. It is missing efforts with no capture. Be cautious when calculating CPUE!")
+  #query and export data as needed based on filters and query type
+  if (QueryType=="Survey"&&is.null(Species)&&is.null(GearType)) {
+    #if it's a survey query and doesn't need catch/effort filters, create output data here
+    outDat<-surveyDat%>%collect()
+  }else{
+    #read in effort data
+    #SurveyEffort, SurveyEffortDetail and, Gear (issue #9)
+    Effort<-tbl(con, "SurveyEffort") %>%
+      select(SurveyId,SurveyEffortId,SurveyEffortKey,ModuleId)%>%
+      left_join(tbl(con, "SurveyEffortDetail"),by="SurveyEffortId")%>%
+      left_join(tbl(con, "Gear") %>%select(GearId, GearType),by="GearId")%>%
+      mutate(GearType=trimws(GearType))%>%
+      select(SurveyId,SurveyEffortId,SurveyEffortKey,ModuleId,BeginningEffortTimestamp, EndingEffortTimestamp, GearType,EffortNumberofGearUsed, EffortTotalQuantity, 
+             EffortTotalMeasurement, EffortAlternateQuantity, EffortAlternateMeasurement)
+    
+    if(!is.null(GearType)){
+      if(!all(GearType%in%c("ANGLING", "BACKSHK", "BOOMSHK", "Envelop", "EXPGNET", "GLGNET",
+                        "LMFYKE", "LIMNO", "MNWTRAP", "OTHER", "PhotoPt", "PLNKNET",
+                        "SEINE", "SETHKS", "SMFYKE", "SRGNET", "STRMSHK", "TOXSAM",
+                        "TRAPNET", "TRAWL", "VGNET"))){
+        stop("GearType must be one of ANGLING,BACKSHK,BOOMSHK,Envelop,EXPGNET,GLGNET,LMFYKE,LIMNO,MNWTRAP,OTHER,PhotoPt,PLNKNET,SEINE,SETHKS,SMFYKE,SRGNET,STRMSHK,TOXSAM,TRAPNET,TRAWL,VGNET")
+      }
+      Effort<-Effort%>%filter(.data$GearType %in% .env$GearType)
     }
-    if(0 %in% outDat$TotalNumberCaught){
-      warning("Query contains potential presence/absence data, identifed with zeros (0). Be cautious when using data!")
+    
+    #join survey and effort data
+    surveyEffortDat<-suppressMessages(surveyDat%>%
+                                        left_join(Effort,by="SurveyId")%>%
+                                        dplyr::compute())
+    
+    # Survey query without Species filter
+    if (QueryType == "Survey" && is.null(Species)) {
+      
+      matchingSurveys <- surveyEffortDat %>%
+        filter(!is.na(GearType)) %>%
+        distinct(SurveyId)
+      
+      outDat <- surveyDat %>%
+        inner_join(matchingSurveys, by = "SurveyId") %>%
+        collect() %>%
+        distinct()
+    }
+    # Efforts query without Species filter
+    if (QueryType == "Efforts" && is.null(Species)) {
+      outDat<-surveyEffortDat %>%
+        collect() %>%
+        distinct()
+    }
+    # Retrieve catch data if needed
+    if (QueryType == "Catch" || !is.null(Species)) {
+      
+      # Read in catch data
+      catchDat <- catchByEffort(
+        con,
+        surveyEffortDat,
+        Special_Legal_Sizes = Special_Legal_Sizes
+      ) %>%
+        collect()
+      
+      # Filter catch data for Survey and Efforts queries
+      if (!is.null(Species)) {
+        speciesDat <- catchDat %>%
+          filter(.data$Species %in% .env$Species)
+        
+        message(
+          "Query only returns surveys/efforts that caught the specified species. It is missing efforts with no capture. Be cautious when calculating CPUE!"
+        )
+      }
+      
+      # Survey query
+      if (QueryType == "Survey") {
+        speciesSurveys <- speciesDat %>%
+          distinct(SurveyId)
+        
+        outDat <- surveyDat %>%
+          inner_join(speciesSurveys, by = "SurveyId") %>%
+          collect() %>%
+          distinct()
+      }
+      
+      # Efforts query
+      if (QueryType == "Efforts") {
+        speciesEfforts <- speciesDat %>%
+          distinct(SurveyId, ModuleId)
+        
+        outDat <- surveyEffortDat %>%
+          collect() %>%
+          inner_join(
+            speciesEfforts,
+            by = c("SurveyId", "ModuleId")
+          ) %>%
+          distinct()
+      }
+      
+      # Catch query
+      if (QueryType == "Catch") {
+        outDat <- surveyEffortDat %>%
+          collect() %>%
+          full_join(catchDat, by = c("SurveyId", "ModuleId"))
+        
+        if (!is.null(Species)) {
+          outDat <- outDat %>%
+            filter(.data$Species %in% .env$Species)
+        }
+        
+        outDat <- outDat %>%
+          filter(is.na(GearType)|trimws(GearType) != "LIMNO")
+        
+        if (0 %in% outDat$TotalNumberCaught) {
+          warning(
+            "Query contains potential presence/absence data, identified with zeros (0). Be cautious when using data!"
+          )
+        }
+      }
     }
   }
+
+
   
   ##############################################################################
   ###look for catch discrepancies (see issue #17)
@@ -344,15 +406,15 @@ FISH_query <- function(con,
         select(SurveyId,SurveyEffortKey)%>%
         unique()
 
-      if (nrow(catchDiscrepancy) > 0) {
-        warning(
-          "DO NOT USE THESE DATA UNTIL VERIFIED!!!",
-          "\n\nThe following SurveyID-SurveyEffortKey combinations were identified with catch discrepancies: \n\n",
-          paste(paste(catchDiscrepancy$SurveyId, catchDiscrepancy$SurveyEffortKey, sep = "-"),collapse = "\n"),
-          "\n\nSee data(Catch_discrepancies) for reference. Contact MFA team for more information.",
-          "\n\nWARNED YOU HAVE BEEN"
-        )
-      }
+        if (nrow(catchDiscrepancy) > 0) {
+          warning(
+            "DO NOT USE THESE DATA UNTIL VERIFIED!!!",
+            "\n\nThe following SurveyID-SurveyEffortKey combinations were identified with catch discrepancies: \n\n",
+            paste(paste(catchDiscrepancy$SurveyId, catchDiscrepancy$SurveyEffortKey, sep = "-"),collapse = "\n"),
+            "\n\nSee data(Catch_discrepancies) for reference. Contact MFA team for more information.",
+            "\n\nWARNED YOU HAVE BEEN"
+          )
+        }
       }
 
 
@@ -418,7 +480,7 @@ FISH_query <- function(con,
                 "\n\nWARNED YOU HAVE BEEN")
       }
     }
-    }
+  }
   ################################################################################
   #print if no data found
   if(nrow(outDat)==0){

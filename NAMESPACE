@@ -8,6 +8,7 @@ export(ageLengthSummary)
 export(catchSummary)
 export(detectionByYear)
 export(lengthFreqByEffort)
+export(run_MFA_app)
 importFrom(dplyr,
   '%>%',
   arrange,
