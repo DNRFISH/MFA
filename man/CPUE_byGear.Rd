@@ -132,7 +132,7 @@ CPUE <- CPUE_byGear(catchData)
 catchData <- FISH_query(
   con,
   QueryType = "Catch",
-  SurveyPurpose = "Status & Trends",
+  SurveyCategory = "Status & Trends",
   Year = 2025
 )
 

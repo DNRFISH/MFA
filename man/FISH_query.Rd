@@ -12,6 +12,7 @@ FISH_query(
   FMU = NULL,
   WaterTypeAbbr = NULL,
   SurveyId = NULL,
+  SurveyCategory = NULL,
   SurveyPurpose = NULL,
   Year = NULL,
   GearType = NULL,
@@ -50,16 +51,26 @@ types are included, subject to the other filters.}
 include in the query. If \code{NULL}, all surveys matching the other
 filters are included.}
 
-\item{SurveyPurpose}{Character vector specifying one or more survey
-purposes to include in the query. Values must match the survey purpose
-descriptions in FISHub. Must be one of
-\code{"Creel Census"}, \code{"Discretionary Survey"}, \code{"Fish Community"},
+\item{SurveyCategory}{Character vector specifying one or more survey
+categories to include in the query. Values must match the survey categories
+in FISHub. Must be one of \code{"Creel Census"}, \code{"Discretionary Survey"}, \code{"Fish Community"},
 \code{"General Survey"}, \code{"Limnology"}, \code{"Management Evaluation"},
 \code{"Population Estimate"}, \code{"Population Reduction"},
 \code{"Recruitment Evaluation"}, \code{"Recruitment v Evaluation"},
 \code{"Research Project"}, \code{"Special Study"}, \code{"Species Evaluation"},
 \code{"Status & Trends"}, and \code{"Stocking Evaluation"}. If \code{NULL}, surveys
-of all purposes are included.}
+of all categories are included. Note- SurveyCategory is now limited to
+\code{"Status & Trends"}, \code{"Discretionary Survey"}, and \code{"Management Evaluation"}
+with more details provided in the \code{"SurveyPurpose"} field. Older data may have other labels.}
+
+\item{SurveyPurpose}{Character vector specifying one or more survey
+purposes to include in the query. Values must match the survey purposes
+in FISHub. Must be one of \code{"Creel Survey"}, \code{"Fish Community"}, \code{"Fish Kill Investigation"},
+\code{"General Survey"}, \code{"Habitat Evaluation"}, \code{"Limnology"}, \code{"Population Estimate"},
+\code{"Population Reduction"}, \code{"Population Reduction Evaluation"}, \code{"Recruitment Evaluation"},
+\code{"Regulations Evaluation"}, \code{"Research Project"}, \code{"Research Section Study"},
+\code{"Special Study"}, \code{"Species Evaluation"}, \code{"Status & Trends"}, \code{"Stocking Evaluation"}.
+If \code{NULL}, surveys of all purposes are included.}
 
 \item{Year}{Numeric vector specifying one or more years to include in
 the query. The year is determined from \code{SurveyBeginTimestamp}. If
@@ -97,7 +108,7 @@ returned data depends on \code{QueryType}:
 
 \itemize{
 \item \code{"Survey"}: One row per unique survey, including waterbody,
-survey purpose and status, survey dates, and survey-level attributes.
+survey category, purpose, status, survey dates, and survey-level attributes.
 \item \code{"Efforts"}: Survey- and effort-level records, including survey
 information, gear type, effort dates, number of gears used, and
 effort quantities and measurements.
@@ -111,7 +122,7 @@ is returned.
 }
 \description{
 Reads in data from FISHub dynamically to reduce memory burden. Can specify whether to query survey or efforts.
-Filters allow you to filter by waterbody, surveyID, survey purpose, year, or gear type
+Filters allow you to filter by waterbody, surveyID, survey category, year, or gear type
 }
 \details{
 \code{FISH_query()} dynamically queries FISHub using the supplied filters and
@@ -119,9 +130,9 @@ collects only the resulting records into R. This approach is intended to
 reduce memory use compared with retrieving complete database tables.
 
 The query combines information from the \code{WaterBody}, \code{Survey},
-\code{SurveyPurpose}, \code{SurveyStatus}, \code{SurveyEffort}, \code{SurveyEffortDetail},
-and \code{Gear} tables. Catch information is subsequently added using
-\code{\link[=catchByEffort]{catchByEffort()}}.
+\code{SurveyPurpose},\code{SurveySecondaryPurpose}, \code{SurveyStatus}, \code{SurveyEffort},
+\code{SurveyEffortDetail}, and \code{Gear} tables. Catch information is subsequently
+added using \code{\link[=catchByEffort]{catchByEffort()}}.
 
 All filter arguments are optional. When multiple filter values are
 supplied, records matching any of the specified values are retained
@@ -173,7 +184,7 @@ FISH_Data <- FISH_query(con,QueryType = "Survey",WaterBodyName = "Lake Orion")
 FISH_Data <- FISH_query(con,QueryType = "Survey",FMU = "CLM")
 
 #all SnT surveys from 2025
-FISH_Data <- FISH_query(con,QueryType = "Survey",SurveyPurpose = "Status & Trends",Year=2025)
+FISH_Data <- FISH_query(con,QueryType = "Survey",SurveyCategory = "Status & Trends",Year=2025)
 
 #all surveys that caught bowfin in 2025
 FISH_Data <- FISH_query(con,QueryType = "Survey",Species="Bowfin",Year=2025)

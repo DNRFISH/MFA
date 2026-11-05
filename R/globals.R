@@ -22,6 +22,7 @@ utils::globalVariables(c(
   "CPUE_alt",
   "IsActive",
   "SurveyPurposeId",
+  "SurveySecondaryPurposeId",
   "Descriptions",
   "SurveyStatusId",
   "SurveyStatus",
