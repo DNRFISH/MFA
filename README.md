@@ -14,7 +14,8 @@ The development version can be installed from GitHub:
 
 ``` r
 # install.packages("remotes")
-remotes::install_github("DNRFISH/MFA")
+remotes::install_github("DNRFISH/MFA@v2.0.0")
+library(MFA)
 ```
 
 ## Running the Shiny App
@@ -31,8 +32,6 @@ The following steps are only needed for those interested in running MFA function
 MFA provides a connection function that uses Windows integrated authentication to connect to the FISHub database.
 
 ``` r
-library(MFA)
-
 con <- FISHub_connect()
 ```
 
