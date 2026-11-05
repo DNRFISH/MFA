@@ -5,7 +5,7 @@ con<-FISHub_connect()
 test_that("FISH_query rejects invalid queries", {
   expect_error(FISH_query(con, QueryType = "BadType"))
   expect_error(FISH_query(con, QueryType = "Survey",GearType="BadNet"))
-  expect_error(FISH_query(con, QueryType = "Survey",SurveyPurpose="BadPurpose"))
+  expect_error(FISH_query(con, QueryType = "Survey",SurveyCategory="BadCategory"))
 })
 
 
@@ -64,9 +64,13 @@ test_that("FISH_query applies individual filters", {
   expect_gt(nrow(result), 0)
   expect_true(all(result$FMU == "CLM"))
   
-  expect_warning(result <- FISH_query(con,QueryType = "Survey",SurveyPurpose = "Management Evaluation"),"DO NOT USE THESE DATA UNTIL VERIFIED") #expected until Catch_discrepancies addressed
+  expect_warning(result <- FISH_query(con,QueryType = "Survey",SurveyCategory = "Management Evaluation"),"DO NOT USE THESE DATA UNTIL VERIFIED") #expected until Catch_discrepancies addressed
   expect_gt(nrow(result), 0)
-  expect_true(all(result$SurveyPurpose == "Management Evaluation"))
+  expect_true(all(result$SurveyCategory == "Management Evaluation"))
+  
+  expect_warning(result <- FISH_query(con,QueryType = "Survey",SurveyPurpose = "Stocking Evaluation"),"DO NOT USE THESE DATA UNTIL VERIFIED") #expected until Catch_discrepancies addressed
+  expect_gt(nrow(result), 0)
+  expect_true(all(result$SurveyPurpose == "Stocking Evaluation"))
   
   result <- FISH_query(con,QueryType = "Survey",MDNRID = "L7844")
   expect_gt(nrow(result), 0)
@@ -260,7 +264,7 @@ test_that("FISH_query provides warning about catch discrepancy issues", {
 test_that("FISH_query provides warning and prompts about extra status and trends efforts", {
   expect_warning(FISH_query(con,QueryType = "Survey",SurveyId = 2785),"DO NOT USE")
   expect_warning(result<-FISH_query(con,QueryType = "Catch",SurveyId = 2785),"DO NOT USE")
-  expect_warning(result2<-FISH_query(con,QueryType = "Catch",SurveyId = 2785,SurveyPurpose = "Status & Trends"),"Extra efforts removed")
+  expect_warning(result2<-FISH_query(con,QueryType = "Catch",SurveyId = 2785,SurveyCategory = "Status & Trends"),"Extra efforts removed")
   expect_equal(nrow(result)-nrow(result2),3)
 })
 

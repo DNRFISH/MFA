@@ -2,7 +2,7 @@
 #'
 #'@description
 #' Reads in data from FISHub dynamically to reduce memory burden. Can specify whether to query survey or efforts.
-#' Filters allow you to filter by waterbody, surveyID, survey purpose, year, or gear type
+#' Filters allow you to filter by waterbody, surveyID, survey category, year, or gear type
 #'
 #' @param con A DBI connection to the FISHub database. The connection must
 #'   be active when function is called.
@@ -34,16 +34,26 @@
 #'   include in the query. If `NULL`, all surveys matching the other
 #'   filters are included.
 #'
-#' @param SurveyPurpose Character vector specifying one or more survey
-#'   purposes to include in the query. Values must match the survey purpose
-#'   descriptions in FISHub. Must be one of
-#'   `"Creel Census"`, `"Discretionary Survey"`, `"Fish Community"`,
+#' @param SurveyCategory Character vector specifying one or more survey
+#'   categories to include in the query. Values must match the survey categories
+#'    in FISHub. Must be one of `"Creel Census"`, `"Discretionary Survey"`, `"Fish Community"`,
 #'   `"General Survey"`, `"Limnology"`, `"Management Evaluation"`,
 #'   `"Population Estimate"`, `"Population Reduction"`,
 #'   `"Recruitment Evaluation"`, `"Recruitment v Evaluation"`,
 #'   `"Research Project"`, `"Special Study"`, `"Species Evaluation"`,
 #'   `"Status & Trends"`, and `"Stocking Evaluation"`. If `NULL`, surveys
-#'   of all purposes are included.
+#'   of all categories are included. Note- SurveyCategory is now limited to 
+#'   `"Status & Trends"`, `"Discretionary Survey"`, and `"Management Evaluation"` 
+#'   with more details provided in the `"SurveyPurpose"` field. Older data may have other labels.
+#'   
+#' @param SurveyPurpose Character vector specifying one or more survey
+#'   purposes to include in the query. Values must match the survey purposes
+#'    in FISHub. Must be one of `"Creel Survey"`, `"Fish Community"`, `"Fish Kill Investigation"`, 
+#'   `"General Survey"`, `"Habitat Evaluation"`, `"Limnology"`, `"Population Estimate"`, 
+#'   `"Population Reduction"`, `"Population Reduction Evaluation"`, `"Recruitment Evaluation"`, 
+#'   `"Regulations Evaluation"`, `"Research Project"`, `"Research Section Study"`, 
+#'   `"Special Study"`, `"Species Evaluation"`, `"Status & Trends"`, `"Stocking Evaluation"`. 
+#'   If `NULL`, surveys of all purposes are included.
 #'
 #' @param Year Numeric vector specifying one or more years to include in
 #'   the query. The year is determined from `SurveyBeginTimestamp`. If
@@ -83,9 +93,9 @@
 #' reduce memory use compared with retrieving complete database tables.
 #'
 #' The query combines information from the `WaterBody`, `Survey`,
-#' `SurveyPurpose`, `SurveyStatus`, `SurveyEffort`, `SurveyEffortDetail`,
-#' and `Gear` tables. Catch information is subsequently added using
-#' [catchByEffort()].
+#' `SurveyPurpose`,`SurveySecondaryPurpose`, `SurveyStatus`, `SurveyEffort`, 
+#' `SurveyEffortDetail`, and `Gear` tables. Catch information is subsequently 
+#' added using [catchByEffort()].
 #'
 #' All filter arguments are optional. When multiple filter values are
 #' supplied, records matching any of the specified values are retained
@@ -118,7 +128,7 @@
 #'
 #' \itemize{
 #'   \item `"Survey"`: One row per unique survey, including waterbody,
-#'     survey purpose and status, survey dates, and survey-level attributes.
+#'     survey category, purpose, status, survey dates, and survey-level attributes.
 #'   \item `"Efforts"`: Survey- and effort-level records, including survey
 #'     information, gear type, effort dates, number of gears used, and
 #'     effort quantities and measurements.
@@ -155,7 +165,7 @@
 #' FISH_Data <- FISH_query(con,QueryType = "Survey",FMU = "CLM")
 #' 
 #' #all SnT surveys from 2025
-#' FISH_Data <- FISH_query(con,QueryType = "Survey",SurveyPurpose = "Status & Trends",Year=2025)
+#' FISH_Data <- FISH_query(con,QueryType = "Survey",SurveyCategory = "Status & Trends",Year=2025)
 #' 
 #' #all surveys that caught bowfin in 2025
 #' FISH_Data <- FISH_query(con,QueryType = "Survey",Species="Bowfin",Year=2025)
@@ -178,6 +188,7 @@ FISH_query <- function(con,
                        FMU=NULL,
                        WaterTypeAbbr=NULL,
                        SurveyId=NULL,
+                       SurveyCategory=NULL,
                        SurveyPurpose=NULL,
                        Year=NULL,
                        GearType=NULL,
@@ -227,27 +238,45 @@ FISH_query <- function(con,
     WaterBody<-WaterBody%>%filter(.data$WaterTypeAbbr %in% .env$WaterTypeAbbr)
   }
   
-  #Survey, SurveyPurpose, and SurveyStatus ID
+  #Survey, SurveyCategory, and SurveyStatus ID
+  #note differences between front end and back end labels
+  #Survey Purpose (backend) = Survey Category (frontend)
+  #Survey Secondary Purpose (backend) = Survey Purpose (frontend)
   Survey<-tbl(con, "Survey")%>%
     left_join(tbl(con, "SurveyPurpose")%>%select(SurveyPurposeId,Descriptions),by = "SurveyPurposeId")%>%
+    rename(SurveyCategory=Descriptions)%>%
+    left_join(tbl(con, "SurveySecondaryPurpose")%>%select(SurveySecondaryPurposeId,Descriptions),by = "SurveySecondaryPurposeId")%>%
     rename(SurveyPurpose=Descriptions)%>%
     left_join(tbl(con, "SurveyStatus")%>%select(SurveyStatusId,Descriptions),by = "SurveyStatusId")%>%
     rename(SurveyStatus=Descriptions)%>%
     mutate(Year=lubridate::year(SurveyBeginTimestamp))%>%
-    select(SurveyId,MDNRID,SurveyPurpose,SurveyStatus,Year,SurveyBeginTimestamp,FixedOrRandom,SurveyPurposeDescription)
+    select(SurveyId,MDNRID,SurveyCategory,SurveyPurpose,SurveyStatus,Year,SurveyBeginTimestamp,FixedOrRandom,SurveyPurposeDescription)
     
   if(!is.null(SurveyId)){
       Survey<-Survey%>%filter(.data$SurveyId %in% .env$SurveyId)
     }
-  if(!is.null(SurveyPurpose)){
-    if(!any(SurveyPurpose%in%c("Creel Census", "Discretionary Survey", "Fish Community", "General Survey",
-                           "Limnology", "Management Evaluation", "Population Estimate",
-                           "Population Reduction", "Recruitment Evaluation", "Recruitment v Evaluation",
-                           "Research Project", "Special Study", "Species Evaluation", "Status & Trends",
-                           "Stocking Evaluation"))){
-      stop("Invalid SurveyPurpose. Must be one of: Creel Census, Discretionary Survey, Fish Community, General Survey,Limnology,
+  if(!is.null(SurveyCategory)){
+    if(!any(SurveyCategory%in%c("Creel Census", "Discretionary Survey", "Fish Community", "General Survey", 
+                                "Limnology", "Management Evaluation", "Population Estimate", 
+                                "Population Reduction", "Recruitment Evaluation", "Recruitment v Evaluation", 
+                                "Research Project", "Special Study", "Species Evaluation", "Status & Trends", 
+                                "Stocking Evaluation"))){
+      stop("Invalid SurveyCategory. Must be one of: Creel Census, Discretionary Survey, Fish Community, General Survey,Limnology,
       Management Evaluation, Population Estimate,Population Reduction, Recruitment Evaluation, Recruitment v Evaluation,
       Research Project, Special Study, Species Evaluation, Status & Trends,Stocking Evaluation")
+    }
+    Survey<-Survey%>%filter(.data$SurveyCategory %in% .env$SurveyCategory)
+  }
+  if(!is.null(SurveyPurpose)){
+    if(!any(SurveyPurpose%in%c("Creel Survey", "Fish Community", "Fish Kill Investigation", 
+                               "General Survey", "Habitat Evaluation", "Limnology", "Population Estimate", 
+                               "Population Reduction", "Population Reduction Evaluation", "Recruitment Evaluation", 
+                               "Regulations Evaluation", "Research Project", "Research Section Study", 
+                               "Special Study", "Species Evaluation", "Status & Trends", "Stocking Evaluation"))){
+      stop("Invalid SurveyPurpose Must be one of: Creel Survey, Fish Community, Fish Kill Investigation, General Survey,
+      Habitat Evaluation, Limnology, Population Estimate, Population Reduction, Population Reduction Evaluation, Recruitment Evaluation,
+      Regulations Evaluation, Research Project, Research Section Study, 
+      Special Study, Species Evaluation, Status & Trends, Stocking Evaluation")
     }
     Survey<-Survey%>%filter(.data$SurveyPurpose %in% .env$SurveyPurpose)
   }
@@ -440,7 +469,7 @@ FISH_query <- function(con,
         warning(
           "The following SurveyIDs were identified as S&T surveys with extra (non S&T) efforts: \n\n",
           paste(paste(sort(SnT_extraEfforts_Surveys$SurveyId)),collapse = ", "),
-          "\n\nDO NOT USE as part of S&T surveys. Use SurveyPurpose='Status & Trends' to filter out.",
+          "\n\nDO NOT USE as part of S&T surveys. Use SurveyCategory='Status & Trends' to filter out.",
           "\nSee data(Status_and_Trends_extra_efforts) for reference. Contact MFA team for more information."
         )
       }
@@ -457,8 +486,8 @@ FISH_query <- function(con,
 
     if (nrow(SnT_extraEfforts) > 0) {
       #if it's a S&T survey, filter out the extra surveys and print a warning
-      if(!is.null(SurveyPurpose)){
-        if(SurveyPurpose=="Status & Trends"){
+      if(isTRUE(SurveyCategory == "Status & Trends") ||
+         isTRUE(SurveyPurpose == "Status & Trends")){
           outDat<-outDat %>%
             mutate(SurveyId=SurveyId)%>%
             dplyr::anti_join(
@@ -470,13 +499,12 @@ FISH_query <- function(con,
                     arrange(SurveyId, SurveyEffortKey) %>%
                     with(paste(paste(SurveyId, SurveyEffortKey, sep = "-"), collapse = ", "))
                   )
-        }
       }else{
         warning("The following SurveyID-SurveyEffortKey combinations were identified as S&T surveys with extra (non S&T) efforts:\n\n",
                 SnT_extraEfforts %>%
                   arrange(SurveyId, SurveyEffortKey) %>%
                   with(paste(paste(SurveyId, SurveyEffortKey, sep = "-"), collapse = ", ")),
-                "\n\nDO NOT USE as part of S&T surveys. Use SurveyPurpose='Status & Trends' to filter out.",
+                "\n\nDO NOT USE as part of S&T surveys. Use SurveyCategory='Status & Trends' to filter out.",
                 "\n\nWARNED YOU HAVE BEEN")
       }
     }
