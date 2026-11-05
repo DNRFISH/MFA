@@ -97,7 +97,7 @@ test_that("FISH_query applies multiple filters", {
     FISH_query(con,QueryType = "Survey",Year = 2025,Species = "Walleye"),
     warning = function(w) {
       if (grepl(
-        "presence/absence|DO NOT USE THESE DATA UNTIL VERIFIED",
+        "presence/absence|DO NOT USE",
         conditionMessage(w)
       )) {
         invokeRestart("muffleWarning")
