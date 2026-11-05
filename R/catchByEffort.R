@@ -198,7 +198,7 @@ catchByEffort <- function(con,effortData,Special_Legal_Sizes = NULL) {
       left_join(legalSizeTibSpeciesStr%>%select(SpeciesStrainId,LegalSize),by="SpeciesStrainId")%>%
       group_by(SurveyId,ModuleId,SpeciesStrainId,LegalSize) %>%
       summarize(
-        TotalNumberCaught = n(),
+        TotalNumberCaught = dplyr::n(),
         LengthAverage = round(mean(TotalLengthEntered, na.rm = TRUE),2),
         LengthMinimum = min(TotalLengthEntered, na.rm = TRUE),
         LengthMaximum = max(TotalLengthEntered, na.rm = TRUE),
