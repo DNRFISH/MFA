@@ -4,7 +4,31 @@ library(MFA)
 library(DT)
 library(DBI)
 
-purposes <- c("Creel Census", "Discretionary Survey", "Fish Community", "General Survey", "Limnology", "Management Evaluation", "Population Estimate", "Population Reduction", "Recruitment Evaluation", "Recruitment v Evaluation", "Research Project", "Special Study", "Species Evaluation", "Status & Trends", "Stocking Evaluation")
+# Preflight check: runs while app.R is being loaded, BEFORE Shiny starts
+# serving the app or opens its browser window.
+message("Testing connection")
+.mfa_preflight_connection <- tryCatch(
+  MFA::FISHub_connect(),
+  error = function(e) {
+    stop(
+      "Cannot connect to FISHub. Connect to the State of Michigan network ",
+      "or establish a VPN connection, then try again.\n",
+      "Connection details: ", conditionMessage(e),
+      call. = FALSE
+    )
+  }
+)
+if (!isTRUE(tryCatch(DBI::dbIsValid(.mfa_preflight_connection),
+                     error = function(e) FALSE))) {
+  stop("FISHub connection test failed. Connect to the State of Michigan network ",
+       "or establish a VPN connection, then try again.", call. = FALSE)
+}
+DBI::dbDisconnect(.mfa_preflight_connection)
+rm(.mfa_preflight_connection)
+message("FISHub connection established")
+
+categories <- c("Creel Census", "Discretionary Survey", "Fish Community", "General Survey", "Limnology", "Management Evaluation", "Population Estimate", "Population Reduction", "Recruitment Evaluation", "Recruitment v Evaluation", "Research Project", "Special Study", "Species Evaluation", "Status & Trends", "Stocking Evaluation")
+purposes <- c("Creel Survey", "Fish Community", "Fish Kill Investigation", "General Survey", "Habitat Evaluation", "Limnology", "Population Estimate", "Population Reduction", "Population Reduction Evaluation", "Recruitment Evaluation", "Regulations Evaluation", "Research Project", "Research Section Study", "Special Study", "Species Evaluation", "Status & Trends", "Stocking Evaluation")
 gears <- c("ANGLING", "BACKSHK", "BOOMSHK", "Envelop", "EXPGNET", "GLGNET", "LMFYKE", "LIMNO", "MNWTRAP", "OTHER", "PhotoPt", "PLNKNET", "SEINE", "SETHKS", "SMFYKE", "SRGNET", "STRMSHK", "TOXSAM", "TRAPNET", "TRAWL", "VGNET")
 analyses <- c("Catch summary"="catchSummary", "CPUE by gear"="CPUE_byGear", "Species detections by year"="detectionByYear", "Length frequency"="lengthFreqByEffort", "Relative stock density (RSD)"="RSD", "Age-length summary"="ageLengthSummary")
 # Concise, app-oriented descriptions.
@@ -33,19 +57,103 @@ get_function_rd <- function(function_name) {
   NULL
 }
 
-# Render Rd markup as HTML, rather than showing the underlying markup or
-# terminal formatting codes. Only documentation from the MFA package is used.
+# Convert Rd documentation to a readable, responsive help page.
+# Rd2txt avoids the layout tables in Rd2HTML; we then render each section
+# separately so prose is not displayed as an indented console transcript.
 get_function_help_html <- function(function_name) {
   tryCatch({
     rd <- get_function_rd(function_name)
-    if (is.null(rd)) return(tags$p("Function documentation not found. Run devtools::document() to generate man/*.Rd files."))
-    html <- paste(capture.output(tools::Rd2HTML(rd, package = "MFA")), collapse = "\n")
-    # Rd2HTML produces a complete HTML document; embed only its body.
-    body <- sub("(?s)^.*?<body[^>]*>", "", html, perl = TRUE)
-    body <- sub("(?s)</body>.*$", "", body, perl = TRUE)
-    if (identical(body, html)) stop("HTML body could not be extracted")
-    div(class = "mfa-rd-html", HTML(body))
-  }, error = function(e) tags$p("Unable to display MFA help: ", conditionMessage(e)))
+    if (is.null(rd)) {
+      return(tags$p("Function documentation not found. Run devtools::document() to generate man/*.Rd files."))
+    }
+    
+    lines <- local({
+      old <- options(width = 76)
+      on.exit(options(old), add = TRUE)
+      capture.output(tools::Rd2txt(rd, package = "MFA"))
+    })
+    lines <- gsub(".\\x08", "", lines, perl = TRUE)
+    lines <- sub("[[:space:]]+$", "", lines)
+    
+    # Section names come from Rd2txt, rather than hardcoding one function.
+    section_names <- c("Description", "Usage", "Arguments", "Details",
+                       "Value", "Note", "Notes", "References", "See Also",
+                       "Examples", "Author", "Authors", "Format", "Source")
+    clean <- trimws(lines)
+    is_heading <- clean %in% paste0(section_names, ":")
+    starts <- which(is_heading)
+    if (!length(starts)) stop("No documentation sections found")
+    
+    # Reflow text paragraphs. Rd2txt inserts fixed-width line breaks and
+    # indentation that should not carry over to HTML prose.
+    render_prose <- function(x) {
+      x <- trimws(x)
+      groups <- split(seq_along(x), cumsum(!nzchar(x)))
+      parts <- lapply(groups, function(indices) {
+        text <- x[indices]
+        text <- text[nzchar(text)]
+        if (!length(text)) return(NULL)
+        paragraph <- paste(text, collapse = " ")
+        # Rd2txt leaves LaTeX equations as literal text. Render them with
+        # MathJax instead of displaying the backslash commands.
+        if (grepl("\\\\(frac|times|sum|sqrt|left|right|geq|leq)", paragraph)) {
+          return(tags$div(
+            class = "mfa-help-equation",
+            HTML(paste0("\\[", paragraph, "\\]"))
+          ))
+        }
+        tags$p(paragraph)
+      })
+      tagList(parts)
+    }
+    
+    render_arguments <- function(x) {
+      # The first line of an Rd2txt argument starts at the left margin,
+      # followed by indented continuation lines.
+      x <- x[nzchar(trimws(x))]
+      if (!length(x)) return(NULL)
+      first <- grepl("^[^[:space:]].*?:[[:space:]]", x)
+      groups <- cumsum(first)
+      if (!any(first)) return(render_prose(x))
+      tagList(lapply(split(x, groups), function(group) {
+        line <- trimws(group[1])
+        name <- sub(":.*$", "", line)
+        description <- sub("^[^:]+:[[:space:]]*", "", line)
+        rest <- if (length(group) > 1) trimws(group[-1]) else character()
+        tags$div(class = "mfa-help-argument",
+                 tags$code(class = "mfa-help-argname", name),
+                 tags$div(class = "mfa-help-argdesc",
+                          paste(c(description, rest[nzchar(rest)]), collapse = " ")))
+      }))
+    }
+    
+    sections <- lapply(seq_along(starts), function(i) {
+      start <- starts[i]
+      end <- if (i < length(starts)) starts[i + 1] - 1 else length(lines)
+      heading <- sub(":$", "", clean[start])
+      content <- if (end > start) lines[(start + 1):end] else character()
+      content <- content[!is.na(content)]
+      
+      rendered <- if (heading == "Arguments") {
+        render_arguments(content)
+      } else if (heading %in% c("Usage", "Examples")) {
+        # Keep code line breaks; remove only the common leading indentation.
+        nonempty <- content[nzchar(trimws(content))]
+        if (length(nonempty)) {
+          indent <- min(nchar(sub("^(\\s*).*", "\\1", nonempty, perl = TRUE)))
+          content <- substring(content, indent + 1)
+        }
+        tags$pre(class = "mfa-help-code", paste(content, collapse = "\n"))
+      } else {
+        render_prose(content)
+      }
+      tags$section(class = "mfa-help-section",
+                   tags$h4(heading), rendered)
+    })
+    tags$div(class = "mfa-help-document", sections)
+  }, error = function(e) {
+    tags$p("Unable to display MFA help: ", conditionMessage(e))
+  })
 }
 
 help_panel <- function(function_name) {
@@ -72,59 +180,99 @@ ui <- navbarPage(
   title = "MFA | Fisheries Data",
   id = "page",
   
-  tags$head(tags$style(HTML("
-    :root { --mfa-teal:#277C78; --mfa-light:#61C8AF; --mfa-navy:#142D3E; --mfa-green:#0D8252; --mfa-border:#dce7e7; }
+  header=tags$head(tags$style(HTML("
+    :root { --dnr-primary1:#5d7f36; --dnr-graylight:#ceced8; --dnr-primary2:#314a24; --dnr-accent1:#903e1f; --dnr-graydark:#45454c; }
+    .mfa-connection-success { color:#0D8252; font-weight:700; font-size:16px; }
+    .mfa-connection-failure { color:#903e1f; font-weight:700; font-size:15px; }
     .mfa-warning-item { padding: 13px 0; border-bottom: 1px solid #cbdada; }
     .mfa-warning-item:first-child { padding-top: 0; }
     .mfa-warning-item:last-child { border-bottom: 0; padding-bottom: 0; }
     body { background:#f5f8f8; color:#203640; font-family:'Segoe UI',Arial,sans-serif; }
-    .navbar-default { background:var(--mfa-navy); border:0; border-radius:0; box-shadow:0 2px 8px rgba(20,45,62,.14); }
+    .navbar-default { background:var(--dnr-primary2); border:0; border-radius:0; box-shadow:0 2px 8px rgba(20,45,62,.14); }
     .navbar-default .navbar-brand { color:#fff !important; font-weight:700; letter-spacing:.3px; }
     .navbar-default .navbar-nav > li > a { color:#d5e8e8 !important; font-weight:600; }
-    .navbar-default .navbar-nav > .active > a, .navbar-default .navbar-nav > .active > a:hover { color:var(--mfa-navy) !important; background:var(--mfa-light) !important; }
+    .navbar-default .navbar-nav > .active > a, .navbar-default .navbar-nav > .active > a:hover { color:var(--dnr-primary2) !important; background:var(--dnr-graylight) !important; }
     .navbar-default .navbar-nav > li > a:hover { color:#fff !important; background:#24495a !important; }
     .container-fluid { max-width:1680px; }
-    .well { background:#fff; border:1px solid var(--mfa-border); border-radius:12px; box-shadow:0 2px 12px rgba(20,45,62,.045); padding:20px; }
-    .main-panel { background:#fff; border:1px solid var(--mfa-border); border-radius:12px; padding:22px 26px; min-height:280px; box-shadow:0 2px 12px rgba(20,45,62,.045); }
-    h2,h3,h4 { color:var(--mfa-navy); font-weight:700; }
+    .well { background:#fff; border:1px solid var(--dnr-graydark); border-radius:12px; box-shadow:0 2px 12px rgba(20,45,62,.045); padding:20px; }
+    .main-panel { background:#fff; border:1px solid var(--dnr-graydark); border-radius:12px; padding:22px 26px; min-height:280px; box-shadow:0 2px 12px rgba(20,45,62,.045); }
+    h2,h3,h4 { color:var(--dnr-primary2); font-weight:700; }
     h4 { font-size:17px; margin-top:12px; margin-bottom:14px; }
     .control-label { color:#314c58; font-weight:600; font-size:13px; }
     .form-control { border:1px solid #cbdada; border-radius:7px; box-shadow:none; }
-    .form-control:focus { border-color:var(--mfa-teal); box-shadow:0 0 0 3px rgba(39,124,120,.14); }
+    .form-control:focus { border-color:var(--dnr-primary1); box-shadow:0 0 0 3px rgba(39,124,120,.14); }
     .btn { border-radius:7px; font-weight:600; transition:background-color .15s,box-shadow .15s; }
-    .btn-primary, .btn-primary:focus { background:var(--mfa-teal); border-color:var(--mfa-teal); color:#fff; }
-    .btn-primary:hover, .btn-primary:active { background:var(--mfa-navy); border-color:var(--mfa-navy); }
-    .btn-default { background:#fff; color:var(--mfa-teal); border-color:#a9c8c5; }
-    .btn-default:hover { background:#eaf5f2; color:var(--mfa-navy); border-color:var(--mfa-teal); }
-    .btn:focus, a:focus { outline:2px solid var(--mfa-light); outline-offset:2px; }
-    a { color:var(--mfa-teal); } a:hover { color:var(--mfa-navy); }
-    hr { border-top-color:var(--mfa-border); margin:20px 0; }
-    .mfa-survey-chip { display:inline-block; padding:5px 9px; border:1px solid #b5d5d0; border-radius:7px; background:#eff8f5; color:var(--mfa-teal); text-decoration:none !important; font-weight:600; }
-    .mfa-survey-chip:hover { background:var(--mfa-navy); color:#fff; border-color:var(--mfa-navy); }
-    .mfa-survey-chip:focus { outline:2px solid var(--mfa-light); outline-offset:2px; }
+    .btn-primary, .btn-primary:focus { background:var(--dnr-primary1); border-color:var(--dnr-primary1); color:#fff; }
+    .btn-primary:hover, .btn-primary:active { background:var(--dnr-primary2); border-color:var(--dnr-primary2); }
+    .btn-default { background:#fff; color:var(--dnr-primary1); border-color:#a9c8c5; }
+    .btn-default:hover { background:#eaf5f2; color:var(--dnr-primary2); border-color:var(--dnr-primary1); }
+    .btn:focus, a:focus { outline:2px solid var(--dnr-graylight); outline-offset:2px; }
+    a { color:var(--dnr-primary1); } a:hover { color:var(--dnr-primary2); }
+    hr { border-top-color:var(--dnr-graydark); margin:20px 0; }
+    .mfa-survey-chip { display:inline-block; padding:5px 9px; border:1px solid #b5d5d0; border-radius:7px; background:#eff8f5; color:var(--dnr-primary1); text-decoration:none !important; font-weight:600; }
+    .mfa-survey-chip:hover { background:var(--dnr-primary2); color:#fff; border-color:var(--dnr-primary2); }
+    .mfa-survey-chip:focus { outline:2px solid var(--dnr-graylight); outline-offset:2px; }
     .dataTables_wrapper .dataTables_filter input, .dataTables_wrapper .dataTables_length select { border:1px solid #cbdada; border-radius:6px; }
-    table.dataTable thead th { background:#eaf4f2; color:var(--mfa-navy); border-bottom:2px solid var(--mfa-teal) !important; }
+    table.dataTable thead th { background:#eaf4f2; color:var(--dnr-primary1); border-bottom:2px solid var(--dnr-primary1) !important; }
     table.dataTable tbody tr.selected { background-color:#d9eee8 !important; }
-    .pagination > .active > a, .pagination > .active > a:hover { background:var(--mfa-teal); border-color:var(--mfa-teal); }
-    .shiny-notification { border-left:4px solid var(--mfa-teal); border-radius:8px; box-shadow:0 5px 20px rgba(20,45,62,.15); }
-    .shiny-notification-message { background:#edf8f4; color:var(--mfa-navy); }
+    .pagination > .active > a, .pagination > .active > a:hover { background:var(--dnr-primary1); border-color:var(--dnr-primary1); }
+    .shiny-notification { border-left:4px solid var(--dnr-primary1); border-radius:8px; box-shadow:0 5px 20px rgba(20,45,62,.15); }
+    .shiny-notification-message { background:#edf8f4; color:var(--dnr-primary2); }
     .shiny-notification-error { border-left-color:#b63b3b; }
-    .modal-header { background:var(--mfa-navy); color:#fff; border-radius:6px 6px 0 0; }
+    .modal-header { background:var(--dnr-primary2); color:#fff; border-radius:6px 6px 0 0; }
     .modal-title { color:#fff; }
-    .mfa-intro { max-width:900px; margin:28px auto; background:#fff; border:1px solid var(--mfa-border); border-radius:14px; padding:32px 38px; box-shadow:0 2px 14px rgba(20,45,62,.05); }
+    .mfa-intro { max-width:900px; margin:28px auto; background:#fff; border:1px solid var(--dnr-graydark); border-radius:14px; padding:32px 38px; box-shadow:0 2px 14px rgba(20,45,62,.05); }
     .mfa-intro h2 { margin-top:0; }
-    .mfa-intro h4 { border-left:4px solid var(--mfa-teal); padding-left:12px; margin-top:24px; }
+    .mfa-intro h4 { border-left:4px solid var(--dnr-primary1); padding-left:12px; margin-top:24px; }
     .mfa-intro-lead { color:#4c6670; font-size:16px; line-height:1.6; }
     .mfa-export .btn { margin:0 5px 8px 0; }
     .mfa-help-summary { color:#425d66; font-size:13px; line-height:1.55; margin:8px 0 12px; }
-    .mfa-rd-html { max-height:440px; overflow:auto; overflow-wrap:anywhere; padding:12px; margin-top:10px; background:#f5f8f8; border:1px solid var(--mfa-border); border-radius:8px; font-size:12px; }
-    .mfa-rd-html pre { white-space:pre-wrap; overflow-wrap:anywhere; }
-    .mfa-rd-html h2, .mfa-rd-html h3 { font-size:15px; }
+    /* Responsive function documentation: normal prose and code-only blocks. */
+    .mfa-help-document { width:100%; min-width:0; max-width:100%; font-family:'Segoe UI',Arial,sans-serif; font-size:14px; line-height:1.6; overflow-wrap:anywhere; }
+    .mfa-help-section { margin:0 0 22px; min-width:0; }
+    .mfa-help-section h4 { margin:0 0 9px; padding-bottom:5px; border-bottom:1px solid #d9e2df; color:var(--dnr-primary2); font-size:16px; }
+    .mfa-help-section p { margin:0 0 10px; }
+    .mfa-help-equation { max-width:100%; padding:12px 4px; margin:10px 0 16px; text-align:center; overflow-x:auto; overflow-y:hidden; }
+    .mfa-help-equation .MathJax { max-width:100%; }
+    .mfa-help-equation mjx-container { max-width:100%; }
+    .mfa-help-argument { margin:0 0 12px; display:grid; grid-template-columns:minmax(110px, 25%) minmax(0, 1fr); gap:12px; align-items:start; }
+    .mfa-help-argname { font-weight:600; overflow-wrap:anywhere; white-space:normal; }
+    .mfa-help-argdesc { min-width:0; overflow-wrap:anywhere; }
+    .mfa-help-code { display:block; width:100%; max-width:100%; min-width:0; box-sizing:border-box; margin:0; padding:12px 14px; background:#f5f8f8; border:1px solid #d9e2df; border-radius:7px; color:#203640; font-family:Consolas,'Courier New',monospace; font-size:12px; line-height:1.55; white-space:pre-wrap !important; overflow-wrap:anywhere; word-break:normal; overflow-x:visible; }
+    @media(max-width:600px) { .mfa-help-argument { display:block; } .mfa-help-argname { display:block; margin-bottom:3px; } }
     #reset_query { margin-top:8px; }
-    #run_analysis, #run_analysis:focus { background:var(--mfa-green); border-color:var(--mfa-green); color:white; font-size:15px; padding:11px; }
-    #run_analysis:hover { background:#08633e; border-color:#08633e; }
+    /* High-priority actions and CSV exports share the accent color. */
+    #run_analysis, #query, #load_data,
+    #export_survey, #export_viewed_data, #download_analysis,
+    #run_analysis:focus, #query:focus, #load_data:focus,
+    #export_survey:focus, #export_viewed_data:focus, #download_analysis:focus {
+      background:var(--dnr-accent1); border-color:var(--dnr-accent1); color:#fff;
+    }
+    #run_analysis:hover, #query:hover, #load_data:hover,
+    #export_survey:hover, #export_viewed_data:hover, #download_analysis:hover {
+      background:#702e17; border-color:#702e17; color:#fff;
+    }
+    #run_analysis { font-size:15px; padding:11px; }
     .mfa-note { font-size:12px; color:#4c6670; line-height:1.5; }
     @media(max-width:767px) { .main-panel { padding:16px; } .mfa-intro { margin:14px; padding:20px; } }
+  ")),
+                   # MathJax must typeset equations after the dynamically generated help modal is visible.
+                   # Supports both MathJax 2 (used by many Shiny installations) and MathJax 3.
+                   tags$script(HTML("
+    $(document).on('shown.bs.modal', '.modal', function () {
+      var modal = this;
+      if (!modal.querySelector('.mfa-help-equation')) return;
+      function typeset() {
+        if (window.MathJax && MathJax.Hub && MathJax.Hub.Queue) {
+          MathJax.Hub.Queue(['Typeset', MathJax.Hub, modal]);
+        } else if (window.MathJax && MathJax.typesetPromise) {
+          MathJax.typesetPromise([modal]);
+        }
+      }
+      typeset();
+      // Shiny may finish binding the dynamic content after the modal becomes visible.
+      setTimeout(typeset, 250);
+    });
   "))),
   tabPanel("Read Me", value = "readme",
            fluidPage(
@@ -159,6 +307,7 @@ ui <- navbarPage(
                           selectInput("fmu", "FMU", c("All"="", "LS", "NLM", "CLM", "SLM", "NLH", "SLH", "LE"), multiple = TRUE),
                           selectInput("water_type", "Water type", c("GL", "IL", "ISR"), multiple = TRUE),
                           textInput("survey_id", "Survey ID(s)", placeholder = "Comma-separated"),
+                          selectInput("category", "Survey category", categories, multiple = TRUE),
                           selectInput("purpose", "Survey purpose", purposes, multiple = TRUE),
                           textInput("year", "Year(s)", placeholder = "e.g., 2024, 2025"),
                           selectInput("gear", "Gear type", gears, multiple = TRUE),
@@ -223,7 +372,7 @@ ui <- navbarPage(
                           uiOutput("active_effort_filters"),
                           selectInput("analysis", "Analysis", analyses),
                           uiOutput("analysis_help"),
-                          actionButton("show_function_help", "Full MFA function help", icon = icon("circle-help"), width = "100%"),
+                          actionButton("show_function_help", "Full MFA function help", icon = icon("question-circle"), width = "100%"),
                           conditionalPanel("input.analysis == 'CPUE_byGear' || input.analysis == 'lengthFreqByEffort' || input.analysis == 'ageLengthSummary'",
                                            selectInput("output_type", "Output", c("Table", "Figure", "RawData"))
                           ),
@@ -249,14 +398,79 @@ ui <- navbarPage(
 server <- function(input, output, session) {
   con <- reactiveVal(NULL)
   connection_error <- reactiveVal(NULL)
+  network_message <- paste(
+    "Cannot connect to FISHub. Connect to the State of Michigan network",
+    "or establish a VPN connection, then try again."
+  )
+  connect_fishub <- function() {
+    db <- con()
+    if (!is.null(db) && isTRUE(tryCatch(DBI::dbIsValid(db), error = function(e) FALSE)))
+      return(TRUE)
+    con(NULL)
+    tryCatch({
+      db <- MFA::FISHub_connect()
+      if (!DBI::dbIsValid(db)) stop("Connection is not valid.")
+      con(db)
+      connection_error(NULL)
+      TRUE
+    }, error = function(e) {
+      connection_error(conditionMessage(e))
+      FALSE
+    })
+  }
+  # Large, persistent connection warning for later actions. Users can
+  # connect to VPN and retry without restarting the application.
+  notify_connection <- function() {
+    showModal(modalDialog(
+      title = "FISHub connection unavailable",
+      tags$p(network_message),
+      if (!is.null(isolate(connection_error())) && nzchar(isolate(connection_error())))
+        tags$p(class = "mfa-note", "Connection details: ",
+               isolate(connection_error())),
+      easyClose = TRUE,
+      footer = modalButton("Close"), size = "m"
+    ))
+  }
+  
+  # The database preflight runs before the Shiny window opens. Once the
+  # session starts, connect for this session and show only the development notice.
   observeEvent(TRUE, {
-    tryCatch(con(MFA::FISHub_connect()), error = function(e) connection_error(conditionMessage(e)))
+    if (!connect_fishub()) {
+      notify_connection()
+      return()
+    }
+    showModal(modalDialog(
+      title = "MFA development notice",
+      tags$h4("Development notice"),
+      tags$p("MFA and this Shiny application are still in development. ",
+             "Results may contain bugs or data errors. Review outputs carefully ",
+             "and report suspected problems to Lucas Nathan (nathanl@michigan.gov)."),
+      tags$hr(),
+      tags$p("Select 'I acknowledge' to continue using the app."),
+      easyClose = FALSE,
+      footer = actionButton("acknowledge_development", "I acknowledge",
+                            class = "btn-primary"),
+      size = "m"
+    ))
   }, once = TRUE)
+  observeEvent(input$acknowledge_development, {
+    removeModal()
+  })
   session$onSessionEnded(function() {
     db <- isolate(con())
     if (!is.null(db) && DBI::dbIsValid(db)) DBI::dbDisconnect(db)
   })
   
+  
+  output$connection_status <- renderUI({
+    db <- con()
+    if (is.null(db)) {
+      tags$p(class = "mfa-note", style = "color:#903e1f; font-weight:600;",
+             "FISHub is not connected. Connect to the network or VPN before querying.")
+    } else {
+      NULL
+    }
+  })
   
   output$mfa_version <- renderText({
     paste0("MFA package version: ", as.character(utils::packageVersion("MFA")))
@@ -267,7 +481,7 @@ server <- function(input, output, session) {
     req(function_name)
     showModal(modalDialog(
       title = paste0("MFA function help: ", function_name, "()"),
-      div(style = "max-height: 70vh; overflow-y: auto;", get_function_help_html(function_name)),
+      shiny::withMathJax(get_function_help_html(function_name)),
       size = "l", easyClose = TRUE, footer = modalButton("Close")
     ))
   })
@@ -279,12 +493,15 @@ server <- function(input, output, session) {
   
   queried <- reactiveVal(NULL)
   selected_ids <- reactiveVal(NULL)
+  selection_category <- reactiveVal(NULL)
   selection_purpose <- reactiveVal(NULL)
   analysis_result <- reactiveVal(NULL)
   analysis_error <- reactiveVal("")
   analysis_kind <- reactiveVal(NULL)
   viewed_data <- reactiveVal(NULL)
   viewed_type <- reactiveVal(NULL)
+  
+  pending_browse_species <- reactiveVal(NULL)
   
   # All species for survey discovery; species actually recorded in the
   # selected surveys for effort/catch filtering. Read directly from FISHub
@@ -337,9 +554,14 @@ server <- function(input, output, session) {
       } else character(0)
       selected_species <- sort(unique(stats::na.omit(trimws(selected_species))))
       current <- isolate(input$effort_species_filter)
+      pending <- isolate(pending_browse_species())
+      # When adding surveys, carry forward the Browse Surveys species filter.
+      # Only retain species that actually occur in the accumulated selection.
+      wanted <- if (is.null(pending)) current else pending
       updateSelectizeInput(session, "effort_species_filter",
                            choices = selected_species,
-                           selected = intersect(current, selected_species), server = TRUE)
+                           selected = intersect(wanted, selected_species), server = TRUE)
+      pending_browse_species(NULL)
     }, error = function(e) {
       showNotification(paste("Could not load species for selected surveys:",
                              conditionMessage(e)), type = "error", duration = NULL)
@@ -431,13 +653,17 @@ server <- function(input, output, session) {
   }
   
   observeEvent(input$query, {
-    req(con())
+    if (!connect_fishub()) {
+      notify_connection()
+      return()
+    }
     tryCatch({
       args <- list(con = con(), QueryType = "Survey",
                    MDNRID = parse_csv(input$mdnrid), WaterBodyName = parse_csv(input$water),
                    FMU = if (length(input$fmu)) input$fmu else NULL,
                    WaterTypeAbbr = if (length(input$water_type)) input$water_type else NULL,
                    SurveyId = parse_csv(input$survey_id, TRUE),
+                   SurveyCategory = if (length(input$category)) input$category else NULL,
                    SurveyPurpose = if (length(input$purpose)) input$purpose else NULL,
                    Year = parse_csv(input$year, TRUE),
                    GearType = if (length(input$gear)) input$gear else NULL,
@@ -476,6 +702,12 @@ server <- function(input, output, session) {
   add_selection <- function(ids) {
     ids <- unique(ids[!is.na(ids)])
     if (!length(ids)) return(showNotification("No surveys selected.", type = "warning"))
+    # Apply discovery filters to subsequent effort/catch viewing and analyses.
+    browse_gears <- isolate(input$gear)
+    browse_species <- isolate(input$species)
+    pending_browse_species(if (length(browse_species)) browse_species else character(0))
+    updateSelectInput(session, "effort_gear_filter",
+                      selected = if (length(browse_gears)) browse_gears else character(0))
     selected_ids(sort(unique(c(isolate(selected_ids()), ids))))
     selection_purpose(NULL) # Mixed survey purposes must not inherit a query-specific filter.
     analysis_result(NULL)
@@ -562,7 +794,10 @@ server <- function(input, output, session) {
   }, ignoreInit = TRUE)
   
   observeEvent(input$load_data, {
-    req(con())
+    if (!connect_fishub()) {
+      notify_connection()
+      return()
+    }
     ids <- selected_ids()
     if (!length(ids)) {
       showNotification("Select surveys on Browse Surveys first.", type = "message", duration = 5)
@@ -620,13 +855,22 @@ server <- function(input, output, session) {
   }, ignoreInit = TRUE)
   
   observeEvent(input$run_analysis, {
-    req(con(), selected_ids())
+    if (!length(selected_ids())) {
+      showNotification("No surveys loaded. Go to Browse Surveys, run a query, and add at least one survey before running an analysis.",
+                       type = "warning", duration = 8)
+      return()
+    }
+    if (!connect_fishub()) {
+      notify_connection()
+      return()
+    }
     analysis_result(NULL)
     analysis_kind(NULL)
     analysis_error("")
     withProgress(message = "Running MFA analysis", value = 0, {
       tryCatch({
         ids <- selected_ids()
+        category <- selection_category()
         purpose <- selection_purpose()
         method <- input$analysis
         filters <- active_filters()
@@ -643,7 +887,7 @@ server <- function(input, output, session) {
         }
         # A legal-size override changes N_legal in FISH_query's catch output,
         # so it must be included in the query cache key and the query rerun.
-        source <- fetch_data(db, if (needs_effort) "Efforts" else "Catch", ids, purpose,
+        source <- fetch_data(db, if (needs_effort) "Efforts" else "Catch", ids, category,purpose,
                              filters$gear, filters$species, legal_sizes = legal_override)
         if (!is.null(legal_override)) {
           # FISH_query matches overrides to the exact FISHub Species name.
