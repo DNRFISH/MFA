@@ -16,8 +16,9 @@ devtools::check(args = "--no-tests") #check with no tests; was having issue with
 #run the package tests
 devtools::test()
 
-#build package
-
+#update version on Description
+#build the Windows binary package- upload this to GitHub release!
+devtools::build(binary = TRUE)
 
 #for adding new functions
 #create file and save in MFA/R
