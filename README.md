@@ -54,7 +54,7 @@ For example, to retrieve Status & Trends surveys from 2025:
 surveys <- FISH_query(
   con,
   QueryType = "Survey",
-  SurveyPurpose = "Status & Trends",
+  SurveyCategory = "Status & Trends",
   Year = 2025
 )
 ```
