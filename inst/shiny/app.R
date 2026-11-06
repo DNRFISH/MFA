@@ -1,8 +1,10 @@
 # MFA Shiny application - install in inst/shiny/app.R
-library(shiny)
-library(MFA)
-library(DT)
-library(DBI)
+suppressPackageStartupMessages({
+  library(shiny)
+  library(MFA)
+  library(DT)
+  library(DBI)
+})
 
 # Preflight check: runs while app.R is being loaded, BEFORE Shiny starts
 # serving the app or opens its browser window.
