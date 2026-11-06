@@ -1,24 +1,81 @@
-#developer Read Me
+# ============================================================
+# MFA Package Development Workflow
+# Run from the MFA package root directory
+# ============================================================
 
-#general work flow for updating package
-
-#Be sure to do a pull to make sure you have the most recent version of files
-#**Update this in the future to describe branching**
-#Load the package
+#when working on code, use this to re-load dev package
 devtools::load_all()
 
-##After making edits
-#update documenation
+# ------------------------------------------------------------
+# 1. UPDATE DOCUMENTATION
+# ------------------------------------------------------------
+
+# Edit documentation as needed:
+# - R/ function files: roxygen documentation
+# - README.Rmd: README-specific content
+# - vignettes/sections/MFA-tutorial.Rmd: shared tutorial (in the future this can be split)
+# - vignettes/MFA-introduction.Rmd: vignette introduction
+
+# Generate function documentation and NAMESPACE
 devtools::document()
-#run a package check
-devtools::check()
-devtools::check(args = "--no-tests") #check with no tests; was having issue with the test portion included here as of 10/6/26
-#run the package tests
+
+# Generate README.md from README.Rmd
+# Includes content from the shared tutorial
+devtools::build_readme()
+
+
+# ------------------------------------------------------------
+# 2. RUN TESTS
+# ------------------------------------------------------------
+
+# Run testthat tests independently
 devtools::test()
 
-#update version on Description
-#build the Windows binary package- upload this to GitHub release!
-devtools::build(binary = TRUE)
+
+# ------------------------------------------------------------
+# 3. CHECK PACKAGE
+# ------------------------------------------------------------
+
+# Check package structure, documentation, dependencies,
+# and vignette building.
+#
+# Tests are excluded here because they previously caused
+# problems during R CMD check (October 2026).
+# Tests are run separately above.
+
+devtools::check(args = "--no-tests")
+
+# Once test issues are resolved, use the full check instead:
+# devtools::check()
+
+
+# ------------------------------------------------------------
+# 4. BUILD RELEASE
+# ------------------------------------------------------------
+
+# Before a release:
+# - Update Version in DESCRIPTION
+# - Commit changes and push to GitHub
+# - Confirm documentation and tests are satisfactory
+
+# Build Windows binary, including vignette
+# Uncomment when preparing a release
+
+# pkgbuild::build(
+#   binary = TRUE,
+#   vignettes = TRUE
+# )
+
+
+# ------------------------------------------------------------
+# 5. VERIFY INSTALLED PACKAGE
+# ------------------------------------------------------------
+
+# After installing the release ZIP, verify:
+
+# vignette("MFA-introduction", package = "MFA")
+# MFA::run_MFA_app()
+
 
 #for adding new functions
 #create file and save in MFA/R

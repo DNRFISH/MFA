@@ -1,9 +1,9 @@
 #' Run the MFA Shiny application
 #'
 #' Launches the MFA Shiny application in a local web browser.
-#'
-#' @param ... Additional arguments passed to shiny::runApp()
-#'
+#' 
+#' @param ... Additional arguments passed to [shiny::runApp()].
+#' @import DT
 #' @return Runs the Shiny application.
 #' @export
 

@@ -9,6 +9,7 @@ export(catchSummary)
 export(detectionByYear)
 export(lengthFreqByEffort)
 export(run_MFA_app)
+import(DT)
 importFrom(dplyr,
   '%>%',
   arrange,

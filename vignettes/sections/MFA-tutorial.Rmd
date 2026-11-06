@@ -1,0 +1,168 @@
+## Connecting to FISHub
+
+MFA uses Windows integrated authentication to connect to the FISHub database. Load MFA and establish a connection before running database queries:
+
+```{r eval=FALSE}
+library(MFA)
+con <- FISHub_connect()
+```
+
+## Querying FISHub
+
+`FISH_query()` retrieves survey, effort, or catch data. For example, retrieve Status & Trends surveys from 2025:
+
+```{r eval=FALSE}
+surveys <- FISH_query(
+  con,
+  QueryType = "Survey",
+  SurveyCategory = "Status & Trends",
+  Year = 2025
+)
+```
+
+Retrieve effort data for a specific survey:
+
+```{r eval=FALSE}
+efforts <- FISH_query(
+  con,
+  QueryType = "Efforts",
+  SurveyId = 805
+)
+```
+
+Retrieve catch data filtered by survey and gear:
+
+```{r eval=FALSE}
+catch <- FISH_query(
+  con,
+  QueryType = "Catch",
+  SurveyId = 805,
+  GearType = "SMFYKE"
+)
+```
+
+Catch data include the number and percentage of fish meeting the applicable minimum length. MFA uses default statewide minimum size limits where available; specify an alternative using `Special_Legal_Sizes`:
+
+```{r eval=FALSE}
+catch <- FISH_query(
+  con,
+  QueryType = "Catch",
+  SurveyId = 805,
+  Special_Legal_Sizes = c("Largemouth Bass" = 10)
+)
+```
+
+## Fisheries summaries
+
+### Catch summary
+
+`catchSummary()` returns one row per survey and species, including total catch, weighted mean length, minimum and maximum length, and the number and percentage meeting the applicable minimum size limit.
+
+```{r eval=FALSE}
+catch_summary <- catchSummary(catch)
+```
+
+### Catch per unit effort (CPUE)
+
+`CPUE_byGear()` summarizes catch per unit effort by sampling gear and can return a table or figure:
+
+```{r eval=FALSE}
+cpue <- CPUE_byGear(catchData = catch, OutputType = "Table")
+CPUE_byGear(catchData = catch, OutputType = "Figure")
+```
+
+### Age-length summaries
+
+`ageLengthSummary()` provides raw age-length data, summary statistics, or a length-at-age figure:
+
+```{r eval=FALSE}
+age_length_raw <- ageLengthSummary(
+  con = con,
+  effortData = efforts,
+  OutputType = "RawData"
+)
+
+age_length_table <- ageLengthSummary(
+  con = con,
+  effortData = efforts,
+  OutputType = "Table"
+)
+
+ageLengthSummary(
+  con = con,
+  effortData = efforts,
+  OutputType = "Figure"
+)
+```
+
+### Detection by year
+
+`detectionByYear()` identifies the years in which each species was detected in the queried catch data:
+
+```{r eval=FALSE}
+catchData <- FISH_query(
+  con,
+  QueryType = "Catch",
+  WaterBodyName = "Lake Orion"
+)
+
+detection_summary <- detectionByYear(catchData)
+```
+
+### Length frequency
+
+`lengthFreqByEffort()` summarizes length frequencies by survey, sampling module, species, and inch group. It can return a table or figure:
+
+```{r eval=FALSE}
+length_frequency <- lengthFreqByEffort(
+  con = con,
+  effortData = efforts,
+  OutputType = "Table"
+)
+
+lengthFreqByEffort(
+  con = con,
+  effortData = efforts,
+  OutputType = "Figure"
+)
+```
+
+### Relative stock density
+
+`RSD()` calculates relative stock density using Gabelhouse length categories. For example, RSD-Trophy is calculated as:
+
+$$
+RSD\text{-}T =
+\frac{N_{Trophy}}
+{N_{Stock} + N_{Quality} + N_{Preferred} + N_{Memorable} + N_{Trophy}}
+\times 100
+$$
+
+Here, each $N$ is the number of fish within the indicated, mutually exclusive length category (Stock, Quality, Preferred, Memorable, or Trophy).
+
+```{r eval=FALSE}
+rsd <- RSD(length_frequency)
+```
+
+## Function reference
+
+| Function | Purpose |
+|---|---|
+| `FISHub_connect()` | Connect to the FISHub database |
+| `FISH_query()` | Query survey, effort, and catch data |
+| `catchSummary()` | Summarize catch |
+| `CPUE_byGear()` | Calculate catch per unit effort by gear |
+| `ageLengthSummary()` | Summarize age and length data |
+| `detectionByYear()` | Summarize species detection by year |
+| `lengthFreqByEffort()` | Summarize length-frequency data by effort |
+| `RSD()` | Calculate relative stock density |
+
+For detailed arguments and return values, use the function help pages, such as `?FISH_query` or `?RSD`, after loading MFA.
+
+## Closing the database connection
+
+Disconnect when you have finished querying FISHub:
+
+```{r eval=FALSE}
+DBI::dbDisconnect(con)
+```

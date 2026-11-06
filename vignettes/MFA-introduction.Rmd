@@ -1,0 +1,13 @@
+---
+title: "Michigan Fisheries Analysis (MFA) Tutorial"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Michigan Fisheries Analysis (MFA) Tutorial}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+This tutorial provides an introduction to querying and analyzing fisheries data using the MFA R package.
+
+```{r child="sections/MFA-tutorial.Rmd"}
+```

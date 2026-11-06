@@ -1,0 +1,52 @@
+---
+output: github_document
+---
+
+<!-- README.md is generated from README.Rmd. Edit README.Rmd and the shared tutorial instead. -->
+
+# Michigan Fisheries Analysis (MFA)
+
+Michigan Fisheries Analysis (MFA) is an R package for querying and summarizing fisheries data from the Michigan Department of Natural Resources FISHub database. It supports retrieval of survey, effort, and catch data and analyses such as catch summaries, catch per unit effort (CPUE), length-frequency distributions, age-length summaries, species detection, and relative stock density (RSD).
+
+MFA can be used through a Shiny application or directly through R functions.
+
+## Installation
+
+MFA is distributed internally to Michigan DNR staff through the shared MFA installation folder. Staff should follow the installation instructions provided with that folder.
+
+Authorized developers with access to the private repository can install a tagged release from GitHub:
+
+```{r eval=FALSE}
+remotes::install_github("DNRFISH/MFA@v2.0.0")
+```
+
+## Shiny application
+
+Launch the application with:
+
+```{r eval=FALSE}
+MFA::run_MFA_app()
+```
+
+## Using MFA functions in R
+
+The examples below demonstrate how to connect to FISHub, query data, and generate fisheries summaries. They require access to the FISHub database and are shown without executing the queries during documentation builds.
+
+```{r child="vignettes/sections/MFA-tutorial.Rmd"}
+```
+
+## Tutorial in R
+
+After installing MFA, open this tutorial from R:
+
+```{r eval=FALSE}
+vignette("MFA-introduction", package = "MFA")
+```
+
+## Development
+
+MFA is under active development. Planned expansions include additional FISHub modules (such as stocking), other fisheries datasets (such as Master Angler), and external data sources.
+
+## License
+
+MFA is currently intended for internal Michigan DNR use. Distribution and licensing terms are being finalized.

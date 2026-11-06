@@ -7,7 +7,7 @@
 run_MFA_app(...)
 }
 \arguments{
-\item{...}{Additional arguments passed to shiny::runApp()}
+\item{...}{Additional arguments passed to \code{\link[shiny:runApp]{shiny::runApp()}}.}
 }
 \value{
 Runs the Shiny application.

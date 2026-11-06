@@ -1,53 +1,60 @@
+
+<!-- README.md is generated from README.Rmd. Edit README.Rmd and the shared tutorial instead. -->
+
 # Michigan Fisheries Analysis (MFA)
 
-Michigan Fisheries Analysis (MFA) is an R package for querying and summarizing fisheries data from the Michigan Department of Natural Resources FISHub database.
+Michigan Fisheries Analysis (MFA) is an R package for querying and
+summarizing fisheries data from the Michigan Department of Natural
+Resources FISHub database. It supports retrieval of survey, effort, and
+catch data and analyses such as catch summaries, catch per unit effort
+(CPUE), length-frequency distributions, age-length summaries, species
+detection, and relative stock density (RSD).
 
-The package provides functions for retrieving survey, effort, and catch data and for producing commonly used fisheries summaries, including catch summaries, catch per unit effort (CPUE), length-frequency distributions, age-length summaries, detection summaries, and relative stock density (RSD).
-
-Future releases will include expanded functions for other FISHub modules (e.g., stocking), other fisheries data (e.g., Master Angler) and external data.
+MFA can be used through a Shiny application or directly through R
+functions.
 
 ## Installation
 
-MFA is currently under development and is not yet available on CRAN.
+MFA is distributed internally to Michigan DNR staff through the shared
+MFA installation folder. Staff should follow the installation
+instructions provided with that folder.
 
-The development version can be installed from GitHub:
+Authorized developers with access to the private repository can install
+a tagged release from GitHub:
 
 ``` r
-# install.packages("remotes")
 remotes::install_github("DNRFISH/MFA@v2.0.0")
-library(MFA)
 ```
 
-## Running the Shiny App
+## Shiny application
 
-For those looking to use the Shiny App, run the following line of code to launch the app.
+Launch the application with:
 
 ``` r
-run_MFA_app()
-``` 
-The following steps are only needed for those interested in running MFA functions in R.
+MFA::run_MFA_app()
+```
+
+## Using MFA functions in R
+
+The examples below demonstrate how to connect to FISHub, query data, and
+generate fisheries summaries. They require access to the FISHub database
+and are shown without executing the queries during documentation builds.
 
 ## Connecting to FISHub
 
-MFA provides a connection function that uses Windows integrated authentication to connect to the FISHub database.
+MFA uses Windows integrated authentication to connect to the FISHub
+database. Load MFA and establish a connection before running database
+queries:
 
 ``` r
+library(MFA)
 con <- FISHub_connect()
-```
-
-The connection can then be used with MFA functions that query the database.
-
-When finished, close the database connection:
-
-``` r
-DBI::dbDisconnect(con)
 ```
 
 ## Querying FISHub
 
-`FISH_query()` retrieves survey, effort, or catch data from FISHub.
-
-For example, to retrieve Status & Trends surveys from 2025:
+`FISH_query()` retrieves survey, effort, or catch data. For example,
+retrieve Status & Trends surveys from 2025:
 
 ``` r
 surveys <- FISH_query(
@@ -58,7 +65,7 @@ surveys <- FISH_query(
 )
 ```
 
-To retrieve effort data for a specific survey:
+Retrieve effort data for a specific survey:
 
 ``` r
 efforts <- FISH_query(
@@ -68,7 +75,7 @@ efforts <- FISH_query(
 )
 ```
 
-Catch data can also be filtered by survey, species, gear, waterbody, or other available criteria:
+Retrieve catch data filtered by survey and gear:
 
 ``` r
 catch <- FISH_query(
@@ -79,143 +86,158 @@ catch <- FISH_query(
 )
 ```
 
-Catch data include #s of legal sized fish. By default it uses the statewide Minimum Size Limits, but they can also be specifed manually:
+Catch data include the number and percentage of fish meeting the
+applicable minimum length. MFA uses default statewide minimum size
+limits where available; specify an alternative using
+`Special_Legal_Sizes`:
 
 ``` r
 catch <- FISH_query(
-con,
-QueryType = "Catch",
-SurveyId = 805,
-Special_Legal_Sizes = c("Largemouth Bass" = 10)
+  con,
+  QueryType = "Catch",
+  SurveyId = 805,
+  Special_Legal_Sizes = c("Largemouth Bass" = 10)
 )
 ```
 
 ## Fisheries summaries
 
-MFA includes functions for summarizing fisheries data.
-
 ### Catch summary
 
-`catchSummary()` summarizes to produce one row for each survey and species combination.The summary includes total catch, weighted average length, minimum and maximum length, and the number and percentage of fish meeting the statewide or other specified legal minimum size limit.
+`catchSummary()` returns one row per survey and species, including total
+catch, weighted mean length, minimum and maximum length, and the number
+and percentage meeting the applicable minimum size limit.
 
 ``` r
 catch_summary <- catchSummary(catch)
 ```
 
-### CPUE
+### Catch per unit effort (CPUE)
 
-`CPUE_byGear()` summarizes catch per unit effort by sampling gear. OutputTypes include "Table" or "Figure"
+`CPUE_byGear()` summarizes catch per unit effort by sampling gear and
+can return a table or figure:
 
 ``` r
-cpue <- CPUE_byGear(
-catchData=catch,
-OutputType="Table"
-)
-CPUE_byGear(
-catchData=catch,
-OutputType="Figure"
-)
+cpue <- CPUE_byGear(catchData = catch, OutputType = "Table")
+CPUE_byGear(catchData = catch, OutputType = "Figure")
 ```
-
-
 
 ### Age-length summaries
 
-`ageLengthSummary()` summarizes age-length information and can return "RawData", "Table", or "Figure".
-
+`ageLengthSummary()` provides raw age-length data, summary statistics,
+or a length-at-age figure:
 
 ``` r
 age_length_raw <- ageLengthSummary(
-con = con,
-effortData = efforts,
-OutputType = "RawData"
+  con = con,
+  effortData = efforts,
+  OutputType = "RawData"
 )
 
-# Return summary statistics
 age_length_table <- ageLengthSummary(
-con = con,
-effortData = efforts,
-OutputType = "Table"
+  con = con,
+  effortData = efforts,
+  OutputType = "Table"
 )
 
-# Create a length-at-age figure
 ageLengthSummary(
-con = con,
-effortData = efforts,
-OutputType = "Figure"
+  con = con,
+  effortData = efforts,
+  OutputType = "Figure"
 )
 ```
 
 ### Detection by year
-`detectionByYear()` produces a table that summarizes which years a given species has been detected. 
+
+`detectionByYear()` identifies the years in which each species was
+detected in the queried catch data:
 
 ``` r
-# Query catch data for a waterbody
 catchData <- FISH_query(
-con,
-QueryType = "Catch",
-WaterBodyName = "Lake Orion"
+  con,
+  QueryType = "Catch",
+  WaterBodyName = "Lake Orion"
 )
 
-# Create a yearly detection summary
 detection_summary <- detectionByYear(catchData)
-
 ```
+
 ### Length frequency
 
-`lengthFreqByEffort()` summarizes length-frequency information by survey, sampling module, species, and inch group.
+`lengthFreqByEffort()` summarizes length frequencies by survey, sampling
+module, species, and inch group. It can return a table or figure:
 
 ``` r
 length_frequency <- lengthFreqByEffort(
-con = con,
-effortData = efforts
+  con = con,
+  effortData = efforts,
+  OutputType = "Table"
 )
-```
 
-A figure can also be returned:
-
-``` r
 lengthFreqByEffort(
-con = con,
-effortData = efforts,
-OutputType = "Figure"
+  con = con,
+  effortData = efforts,
+  OutputType = "Figure"
 )
 ```
+
 ### Relative stock density
 
-`RSD()` calculates relative stock density using Gabelhouse length categories.
-For example, RSD-Trophy is calculated as:
+`RSD()` calculates relative stock density using Gabelhouse length
+categories. For example, RSD-Trophy is calculated as:
 
-$$
-RSD\text{-}T =
+$$RSD\text{-}T =
 \frac{N_{Trophy}}
 {N_{Stock} + N_{Quality} + N_{Preferred} + N_{Memorable} + N_{Trophy}}
-\times 100
-$$
+\times 100$$
 
-, where \(N_{Trophy}\), \(N_{Memorable}\), etc. represent the number of fish meeting the minimum length criterion for each respective RSD category.
+Here, each $N$ is the number of fish within the indicated, mutually
+exclusive length category (Stock, Quality, Preferred, Memorable, or
+Trophy).
 
 ``` r
 rsd <- RSD(length_frequency)
 ```
 
-## Package functions
+## Function reference
 
 | Function               | Purpose                                   |
 |------------------------|-------------------------------------------|
-| `MFA_connect()`        | Connect to the FISHub database            |
+| `FISHub_connect()`     | Connect to the FISHub database            |
 | `FISH_query()`         | Query survey, effort, and catch data      |
 | `catchSummary()`       | Summarize catch                           |
-| `CPUEbyGear()`         | Calculate catch per unit effort by gear   |
-| `lengthFreqByEffort()` | Summarize length-frequency data by effort |
+| `CPUE_byGear()`        | Calculate catch per unit effort by gear   |
 | `ageLengthSummary()`   | Summarize age and length data             |
 | `detectionByYear()`    | Summarize species detection by year       |
+| `lengthFreqByEffort()` | Summarize length-frequency data by effort |
 | `RSD()`                | Calculate relative stock density          |
+
+For detailed arguments and return values, use the function help pages,
+such as `?FISH_query` or `?RSD`, after loading MFA.
+
+## Closing the database connection
+
+Disconnect when you have finished querying FISHub:
+
+``` r
+DBI::dbDisconnect(con)
+```
+
+## Tutorial in R
+
+After installing MFA, open this tutorial from R:
+
+``` r
+vignette("MFA-introduction", package = "MFA")
+```
 
 ## Development
 
-MFA is currently under development. The package is being developed to provide a consistent set of tools for querying and analyzing Michigan fisheries data and will eventually support a Shiny application for users who do not need to work directly in R.
+MFA is under active development. Planned expansions include additional
+FISHub modules (such as stocking), other fisheries datasets (such as
+Master Angler), and external data sources.
 
 ## License
 
-MFA is currently under development and the distribution and licensing terms are being finalized.
+MFA is currently intended for internal Michigan DNR use. Distribution
+and licensing terms are being finalized.
