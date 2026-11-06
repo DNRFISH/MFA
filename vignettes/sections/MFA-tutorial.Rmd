@@ -7,6 +7,21 @@ library(MFA)
 con <- FISHub_connect()
 ```
 
+## Function reference
+
+| Function | Purpose |
+|---|---|
+| `FISHub_connect()` | Connect to the FISHub database |
+| `FISH_query()` | Query survey, effort, and catch data |
+| `catchSummary()` | Summarize catch |
+| `CPUE_byGear()` | Calculate catch per unit effort by gear |
+| `ageLengthSummary()` | Summarize age and length data |
+| `detectionByYear()` | Summarize species detection by year |
+| `lengthFreqByEffort()` | Summarize length-frequency data by effort |
+| `RSD()` | Calculate relative stock density |
+
+For detailed arguments and return values, use the function help pages, such as `?FISH_query` or `?RSD`, after loading MFA.
+
 ## Querying FISHub
 
 `FISH_query()` retrieves survey, effort, or catch data. For example, retrieve Status & Trends surveys from 2025:
@@ -144,20 +159,6 @@ Here, each $N$ is the number of fish within the indicated, mutually exclusive le
 rsd <- RSD(length_frequency)
 ```
 
-## Function reference
-
-| Function | Purpose |
-|---|---|
-| `FISHub_connect()` | Connect to the FISHub database |
-| `FISH_query()` | Query survey, effort, and catch data |
-| `catchSummary()` | Summarize catch |
-| `CPUE_byGear()` | Calculate catch per unit effort by gear |
-| `ageLengthSummary()` | Summarize age and length data |
-| `detectionByYear()` | Summarize species detection by year |
-| `lengthFreqByEffort()` | Summarize length-frequency data by effort |
-| `RSD()` | Calculate relative stock density |
-
-For detailed arguments and return values, use the function help pages, such as `?FISH_query` or `?RSD`, after loading MFA.
 
 ## Closing the database connection
 

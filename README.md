@@ -13,11 +13,19 @@ detection, and relative stock density (RSD).
 MFA can be used through a Shiny application or directly through R
 functions.
 
+## Development
+
+MFA is under active development. Results may contain errors. Please
+review outputs carefully and notify Lucas Nathan
+(<nathanl@michigan.gov>) if you identify a potential error. Planned
+expansions include additional FISHub modules (such as stocking), other
+fisheries datasets (such as Master Angler), and external data sources.
+
 ## Installation
 
 MFA is distributed internally to Michigan DNR staff through the shared
-MFA installation folder. Staff should follow the installation
-instructions provided with that folder.
+MFA installation folder on SharePoint. Staff should follow the
+installation instructions provided with that folder.
 
 Authorized developers with access to the private repository can install
 a tagged release from GitHub:
@@ -36,6 +44,12 @@ MFA::run_MFA_app()
 
 ## Using MFA functions in R
 
+After installing MFA, open this tutorial from R:
+
+``` r
+vignette("MFA-introduction", package = "MFA")
+```
+
 The examples below demonstrate how to connect to FISHub, query data, and
 generate fisheries summaries. They require access to the FISHub database
 and are shown without executing the queries during documentation builds.
@@ -50,6 +64,22 @@ queries:
 library(MFA)
 con <- FISHub_connect()
 ```
+
+## Function reference
+
+| Function               | Purpose                                   |
+|------------------------|-------------------------------------------|
+| `FISHub_connect()`     | Connect to the FISHub database            |
+| `FISH_query()`         | Query survey, effort, and catch data      |
+| `catchSummary()`       | Summarize catch                           |
+| `CPUE_byGear()`        | Calculate catch per unit effort by gear   |
+| `ageLengthSummary()`   | Summarize age and length data             |
+| `detectionByYear()`    | Summarize species detection by year       |
+| `lengthFreqByEffort()` | Summarize length-frequency data by effort |
+| `RSD()`                | Calculate relative stock density          |
+
+For detailed arguments and return values, use the function help pages,
+such as `?FISH_query` or `?RSD`, after loading MFA.
 
 ## Querying FISHub
 
@@ -199,22 +229,6 @@ Trophy).
 rsd <- RSD(length_frequency)
 ```
 
-## Function reference
-
-| Function               | Purpose                                   |
-|------------------------|-------------------------------------------|
-| `FISHub_connect()`     | Connect to the FISHub database            |
-| `FISH_query()`         | Query survey, effort, and catch data      |
-| `catchSummary()`       | Summarize catch                           |
-| `CPUE_byGear()`        | Calculate catch per unit effort by gear   |
-| `ageLengthSummary()`   | Summarize age and length data             |
-| `detectionByYear()`    | Summarize species detection by year       |
-| `lengthFreqByEffort()` | Summarize length-frequency data by effort |
-| `RSD()`                | Calculate relative stock density          |
-
-For detailed arguments and return values, use the function help pages,
-such as `?FISH_query` or `?RSD`, after loading MFA.
-
 ## Closing the database connection
 
 Disconnect when you have finished querying FISHub:
@@ -222,20 +236,6 @@ Disconnect when you have finished querying FISHub:
 ``` r
 DBI::dbDisconnect(con)
 ```
-
-## Tutorial in R
-
-After installing MFA, open this tutorial from R:
-
-``` r
-vignette("MFA-introduction", package = "MFA")
-```
-
-## Development
-
-MFA is under active development. Planned expansions include additional
-FISHub modules (such as stocking), other fisheries datasets (such as
-Master Angler), and external data sources.
 
 ## License
 
