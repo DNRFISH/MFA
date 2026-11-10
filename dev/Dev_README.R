@@ -59,12 +59,28 @@ devtools::check(args = "--no-tests")
 # - Confirm documentation and tests are satisfactory
 
 # Build Windows binary, including vignette
-# Uncomment when preparing a release
 
-# pkgbuild::build(
-#   binary = TRUE,
-#   vignettes = TRUE
-# )
+# Step 1: Build source package, including vignettes
+source_pkg <- pkgbuild::build(
+  binary = FALSE,
+  vignettes = TRUE
+)
+
+# Step 2: Build Windows binary from source package
+zip_file <- pkgbuild::build(
+  path = source_pkg,
+  binary = TRUE
+)
+
+# Step 3: Verify vignette is included
+zip_contents <- unzip(zip_file, list = TRUE)
+
+stopifnot(
+  "MFA/doc/MFA-introduction.html" %in% zip_contents$Name,
+  "MFA/Meta/vignette.rds" %in% zip_contents$Name
+)
+
+message("MFA release built successfully: ", zip_file)
 
 
 # ------------------------------------------------------------
