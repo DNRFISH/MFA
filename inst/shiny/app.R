@@ -889,8 +889,10 @@ server <- function(input, output, session) {
         }
         # A legal-size override changes N_legal in FISH_query's catch output,
         # so it must be included in the query cache key and the query rerun.
-        source <- fetch_data(db, if (needs_effort) "Efforts" else "Catch", ids, category,purpose,
-                             filters$gear, filters$species, legal_sizes = legal_override)
+        source <- fetch_data(db, if (needs_effort) "Efforts" else "Catch",
+                             ids = ids, purpose = purpose,
+                             gear = filters$gear, species = filters$species,
+                             legal_sizes = legal_override)
         if (!is.null(legal_override)) {
           # FISH_query matches overrides to the exact FISHub Species name.
           # Do not silently present default-size results if the name differs.
