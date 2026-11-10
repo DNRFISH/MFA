@@ -856,6 +856,25 @@ server <- function(input, output, session) {
     analysis_error("")
   }, ignoreInit = TRUE)
   
+  # Effort-based MFA functions query additional tables by module/survey,
+  # so the species filter must also be applied to their final outputs.
+  filter_analysis_species <- function(result, species) {
+    if (!length(species)) return(result)
+    if (inherits(result, "ggplot")) {
+      if (!is.data.frame(result$data) || !"Species" %in% names(result$data))
+        stop("Cannot apply the species filter to this analysis figure.")
+      result$data <- result$data[!is.na(result$data$Species) &
+                                   result$data$Species %in% species, , drop = FALSE]
+      if (!nrow(result$data)) stop("No results for the selected species.")
+      return(result)
+    }
+    if (!is.data.frame(result) || !"Species" %in% names(result))
+      stop("Cannot apply the species filter: analysis output has no Species column.")
+    result <- result[!is.na(result$Species) & result$Species %in% species, , drop = FALSE]
+    if (!nrow(result)) stop("No results for the selected species.")
+    result
+  }
+
   observeEvent(input$run_analysis, {
     if (!length(selected_ids())) {
       showNotification("No surveys loaded. Go to Browse Surveys, run a query, and add at least one survey before running an analysis.",
@@ -911,9 +930,19 @@ server <- function(input, output, session) {
                                      "CPUE_byGear" = MFA::CPUE_byGear(source$data, OutputType = output_type),
                                      "detectionByYear" = MFA::detectionByYear(source$data),
                                      "lengthFreqByEffort" = MFA::lengthFreqByEffort(db, source$data, OutputType = output_type),
-                                     "RSD" = MFA::RSD(MFA::lengthFreqByEffort(db, source$data, OutputType = "Table")),
+                                     "RSD" = {
+                                       length_data <- MFA::lengthFreqByEffort(db, source$data, OutputType = "Table")
+                                       if (length(filters$species)) {
+                                         length_data <- filter_analysis_species(length_data, filters$species)
+                                       }
+                                       MFA::RSD(length_data)
+                                     },
                                      "ageLengthSummary" = MFA::ageLengthSummary(db, source$data, OutputType = output_type)
         ))
+        # These functions can return species beyond the FISH_query effort filter.
+        if (length(filters$species) && method %in% c("lengthFreqByEffort", "RSD", "ageLengthSummary")) {
+          result$data <- filter_analysis_species(result$data, filters$species)
+        }
         analysis_result(result$data)
         analysis_kind(if (inherits(result$data, "ggplot")) "figure" else "table")
         show_messages(c(source$notes, result$notes))
