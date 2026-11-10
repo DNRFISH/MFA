@@ -29,8 +29,8 @@ devtools::build_readme()
 # ------------------------------------------------------------
 
 # Run testthat tests independently
-devtools::test()
-
+devtools::test() #all tests
+devtools::test(filter = "catchSummary") #used to do a single test
 
 # ------------------------------------------------------------
 # 3. CHECK PACKAGE
