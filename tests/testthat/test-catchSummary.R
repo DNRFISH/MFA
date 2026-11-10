@@ -55,3 +55,8 @@ test_that("catchSummary returns the correct number of species", {
   expect_equal(n_distinct(catchSum$Species),1) #from dev/examples/LakeOrion_1162_draft
 })
 
+test_that("catchSummary works with live data", {
+  result <- FISH_query(con,QueryType = "Catch",SurveyId = 805)
+  catchSum <- catchSummary(result)
+  expect_equal(sum(catchSum$TotalNumberCaught),1078)
+})
