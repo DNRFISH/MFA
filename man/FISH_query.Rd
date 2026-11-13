@@ -11,6 +11,7 @@ FISH_query(
   WaterBodyName = NULL,
   FMU = NULL,
   WaterTypeAbbr = NULL,
+  SiteName = NULL,
   SurveyId = NULL,
   SurveyCategory = NULL,
   SurveyPurpose = NULL,
@@ -32,10 +33,11 @@ Must be one of \code{"Survey"}, \code{"Efforts"}, or \code{"Catch"}. Defaults to
 to include in the query. If \code{NULL}, data for all waterbodies are
 included, subject to the other filters.}
 
-\item{WaterBodyName}{Character vector specifying one or more waterbody
-names to include in the query. Names must match the corresponding
-\code{WaterBodyName} values in FISHub. If \code{NULL}, all waterbodies are
-included, subject to the other filters.}
+\item{WaterBodyName}{Character vector specifying one or more
+partial waterbody names to include in the query. Matching is
+case-insensitive and returns waterbodies containing any of the
+specified text strings. If \code{NULL}, all waterbodies are included,
+subject to the other filters.}
 
 \item{FMU}{Character vector specifying one or more Fisheries Management Unit
 codes to include in the query. Must be one of: \code{"LS"}, \code{"NLM"}, \code{"CLM"},
@@ -46,6 +48,12 @@ included, subject to the other filters.}
 types to include in the query. Must be one of: \code{"GL"} (Great Lakes),
 \code{"IL"} (Inland Lake), and \code{"ISR"} (Inland Stream). If \code{NULL}, all waterbody
 types are included, subject to the other filters.}
+
+\item{SiteName}{Character vector specifying one or more
+partial site names to include in the query. Matching is
+case-insensitive and returns surveys at sites containing any of the
+specified text strings. If \code{NULL}, all sites are included,
+subject to the other filters.}
 
 \item{SurveyId}{Numeric vector specifying one or more Survey IDs to
 include in the query. If \code{NULL}, all surveys matching the other

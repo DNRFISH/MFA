@@ -15,10 +15,11 @@
 #'   to include in the query. If `NULL`, data for all waterbodies are
 #'   included, subject to the other filters.
 #'
-#' @param WaterBodyName Character vector specifying one or more waterbody
-#'   names to include in the query. Names must match the corresponding
-#'   `WaterBodyName` values in FISHub. If `NULL`, all waterbodies are
-#'   included, subject to the other filters.
+#' @param WaterBodyName Character vector specifying one or more
+#'   partial waterbody names to include in the query. Matching is
+#'   case-insensitive and returns waterbodies containing any of the
+#'   specified text strings. If `NULL`, all waterbodies are included,
+#'   subject to the other filters.
 #'   
 #'@param FMU Character vector specifying one or more Fisheries Management Unit
 #'   codes to include in the query. Must be one of: `"LS"`, `"NLM"`, `"CLM"`,
@@ -30,6 +31,12 @@
 #'   `"IL"` (Inland Lake), and `"ISR"` (Inland Stream). If `NULL`, all waterbody 
 #'   types are included, subject to the other filters.
 #'
+#'@param SiteName Character vector specifying one or more
+#'   partial site names to include in the query. Matching is
+#'   case-insensitive and returns surveys at sites containing any of the
+#'   specified text strings. If `NULL`, all sites are included,
+#'   subject to the other filters.
+#'   
 #' @param SurveyId Numeric vector specifying one or more Survey IDs to
 #'   include in the query. If `NULL`, all surveys matching the other
 #'   filters are included.
@@ -187,6 +194,7 @@ FISH_query <- function(con,
                        WaterBodyName = NULL,
                        FMU=NULL,
                        WaterTypeAbbr=NULL,
+                       SiteName=NULL,
                        SurveyId=NULL,
                        SurveyCategory=NULL,
                        SurveyPurpose=NULL,
@@ -208,6 +216,7 @@ FISH_query <- function(con,
     left_join(tbl(con, "EntityOrganizationalUnit")%>%select(EntityOrganizationalUnitId,UnitReportId),by = "EntityOrganizationalUnitId")%>%
     left_join(tbl(con, "Water")%>%select(WaterId,WaterTypeId),by = "WaterId")%>%
     left_join(tbl(con, "WaterType")%>%select(WaterTypeId,Name),by = "WaterTypeId")%>%
+    left_join(tbl(con, "County")%>%select(CountyId,CountyName),by = "CountyId")%>%
     mutate(
       FMU = case_when(
         UnitReportId == "NH  " ~ "NLH",
@@ -221,16 +230,36 @@ FISH_query <- function(con,
         TRUE ~ UnitReportId
       )
     )%>%
-    select(MDNRID,WaterBodyName,FMU,Name)%>%
+    select(MDNRID,WaterBodyName,FMU,CountyName,Name)%>%
     rename(WaterTypeAbbr=Name)%>%
     distinct(MDNRID, WaterBodyName, .keep_all = TRUE)#*should we carry over old waterbody ID for unlocated ones?
   
   if(!is.null(MDNRID)){
     WaterBody<-WaterBody%>%filter(.data$MDNRID %in% .env$MDNRID)
   }
-  if(!is.null(WaterBodyName)){
-    WaterBody<-WaterBody%>%filter(.data$WaterBodyName %in% .env$WaterBodyName)
+  
+  if (!is.null(WaterBodyName)) {
+    
+    # Create a fixed-pattern match for each supplied name
+    patterns <- lapply(tolower(WaterBodyName), function(x) {
+      rlang::expr(
+        stringr::str_detect(
+          tolower(.data$WaterBodyName),
+          stringr::fixed(!!x)
+        )
+      )
+    })
+    
+    # Combine multiple names using OR
+    combined <- Reduce(
+      function(x, y) rlang::expr(!!x | !!y),
+      patterns
+    )
+    
+    WaterBody <- WaterBody %>%
+      filter(!!combined)
   }
+  
   if(!is.null(FMU)){
     WaterBody<-WaterBody%>%filter(.data$FMU %in% .env$FMU)
   }
@@ -243,6 +272,7 @@ FISH_query <- function(con,
   #Survey Purpose (backend) = Survey Category (frontend)
   #Survey Secondary Purpose (backend) = Survey Purpose (frontend)
   Survey<-tbl(con, "Survey")%>%
+    left_join(tbl(con, "Site")%>%select(SiteName,SiteId),by = "SiteId")%>%
     left_join(tbl(con, "SurveyPurpose")%>%select(SurveyPurposeId,Descriptions),by = "SurveyPurposeId")%>%
     rename(SurveyCategory=Descriptions)%>%
     left_join(tbl(con, "SurveySecondaryPurpose")%>%select(SurveySecondaryPurposeId,Descriptions),by = "SurveySecondaryPurposeId")%>%
@@ -250,8 +280,30 @@ FISH_query <- function(con,
     left_join(tbl(con, "SurveyStatus")%>%select(SurveyStatusId,Descriptions),by = "SurveyStatusId")%>%
     rename(SurveyStatus=Descriptions)%>%
     mutate(Year=lubridate::year(SurveyBeginTimestamp))%>%
-    select(SurveyId,MDNRID,SurveyCategory,SurveyPurpose,SurveyStatus,Year,SurveyBeginTimestamp,FixedOrRandom,SurveyPurposeDescription)
+    select(SurveyId,MDNRID,SiteName,SurveyCategory,SurveyPurpose,SurveyStatus,Year,SurveyBeginTimestamp,FixedOrRandom,SurveyPurposeDescription)
+  
+  if (!is.null(SiteName)) {
     
+    # Create a fixed-pattern match for each supplied name
+    patterns <- lapply(tolower(SiteName), function(x) {
+      rlang::expr(
+        stringr::str_detect(
+          tolower(.data$SiteName),
+          stringr::fixed(!!x)
+        )
+      )
+    })
+    
+    # Combine multiple names using OR
+    combined <- Reduce(
+      function(x, y) rlang::expr(!!x | !!y),
+      patterns
+    )
+    
+    Survey <- Survey %>%
+      filter(!!combined)
+  }
+  
   if(!is.null(SurveyId)){
       Survey<-Survey%>%filter(.data$SurveyId %in% .env$SurveyId)
     }

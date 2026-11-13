@@ -60,9 +60,21 @@ test_that("FISH_query applies individual filters", {
   expect_gt(nrow(result), 0)
   expect_true(all(result$Year == 2024))
   
+  result <- FISH_query(con,QueryType = "Survey",WaterBodyName = "orion")
+  expect_gt(nrow(result), 0)
+  expect_true(all(result$WaterBodyName == "Lake Orion"))
+  
+  expect_warning(result <- FISH_query(con,QueryType = "Survey",WaterBodyName = c("orion","higgins")),"DO NOT USE") #expected until Catch_discrepancies addressed
+  expect_gt(nrow(result), 0)
+  expect_true(n_distinct(result$MDNRID)==3)
+  
   expect_warning(result <- FISH_query(con,QueryType = "Survey",FMU = "CLM"),"DO NOT USE THESE DATA UNTIL VERIFIED") #expected until Catch_discrepancies addressed
   expect_gt(nrow(result), 0)
   expect_true(all(result$FMU == "CLM"))
+  
+  result <- FISH_query(con,QueryType = "Survey",SiteName = "Ideal")
+  expect_gt(nrow(result), 0)
+  expect_true(all(result$WaterBodyName == "Buck Creek"))
   
   expect_warning(result <- FISH_query(con,QueryType = "Survey",SurveyCategory = "Management Evaluation"),"DO NOT USE THESE DATA UNTIL VERIFIED") #expected until Catch_discrepancies addressed
   expect_gt(nrow(result), 0)

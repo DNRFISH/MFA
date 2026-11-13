@@ -304,10 +304,17 @@ ui <- navbarPage(
            sidebarLayout(
              sidebarPanel(width = 3,
                           h4("Survey filters"),
-                          textInput("mdnrid", "MDNRID(s)", placeholder = "Comma-separated"),
-                          textInput("water", "Waterbody name(s)", placeholder = "Exact names, comma-separated"),
                           selectInput("fmu", "FMU", c("All"="", "LS", "NLM", "CLM", "SLM", "NLH", "SLH", "LE"), multiple = TRUE),
+                          selectizeInput("water", "Waterbody name(s)", choices = NULL, multiple = TRUE,
+                                         options = list(placeholder = "Search or type partial waterbody names",
+                                                        create = TRUE, persist = FALSE, plugins = list("remove_button"))),
+                          selectizeInput("county", "County", choices = NULL, multiple = TRUE,
+                                         options = list(placeholder = "All counties; type to search")),
+                          textInput("mdnrid", "MDNRID(s)", placeholder = "Comma-separated"),
                           selectInput("water_type", "Water type", c("GL", "IL", "ISR"), multiple = TRUE),
+                          selectizeInput("site_name", "Site name(s)", choices = NULL, multiple = TRUE,
+                                         options = list(placeholder = "Search or type partial site names",
+                                                        create = TRUE, persist = FALSE, plugins = list("remove_button"))),
                           textInput("survey_id", "Survey ID(s)", placeholder = "Comma-separated"),
                           selectInput("category", "Survey category", categories, multiple = TRUE),
                           selectInput("purpose", "Survey purpose", purposes, multiple = TRUE),
@@ -505,6 +512,107 @@ server <- function(input, output, session) {
   
   pending_browse_species <- reactiveVal(NULL)
   
+  # Lightweight active-waterbody metadata, collected once per connection.
+  # Names are suggestions only; typed partial names are also valid filters.
+  waterbody_lookup <- reactive({
+    db <- con()
+    req(db)
+    dplyr::tbl(db, "WaterBody") %>%
+      dplyr::filter(IsActive == TRUE) %>%
+      dplyr::left_join(
+        dplyr::tbl(db, "EntityOrganizationalUnit") %>%
+          dplyr::select(EntityOrganizationalUnitId, UnitReportId),
+        by = "EntityOrganizationalUnitId"
+      ) %>%
+      dplyr::mutate(FMU = dplyr::case_when(
+        UnitReportId == "NH  " ~ "NLH",
+        UnitReportId == "SM  " ~ "SLM",
+        UnitReportId == "SH  " ~ "SLH",
+        UnitReportId == "ER  " ~ "LE",
+        UnitReportId == "CM  " ~ "CLM",
+        UnitReportId == "NM  " ~ "NLM",
+        UnitReportId == "ES  " ~ "LS",
+        UnitReportId == "WS  " ~ "LS",
+        TRUE ~ UnitReportId
+      )) %>%
+      dplyr::select(MDNRID, WaterBodyName, FMU) %>%
+      dplyr::distinct() %>%
+      dplyr::collect()
+  })
+
+  observeEvent(list(waterbody_lookup(), input$fmu), {
+    tryCatch({
+      wb <- waterbody_lookup()
+      if (length(input$fmu)) {
+        wb <- wb[!is.na(wb$FMU) & wb$FMU %in% input$fmu, , drop = FALSE]
+      }
+      names <- sort(unique(wb$WaterBodyName[!is.na(wb$WaterBodyName) &
+                                                nzchar(trimws(wb$WaterBodyName))]))
+      # Preserve typed entries even when they aren't in the suggestion list.
+      current <- isolate(input$water)
+      updateSelectizeInput(session, "water", choices = unique(c(names, current)),
+                           selected = current, server = TRUE)
+    }, error = function(e) {
+      showNotification(paste("Could not load waterbody names:", conditionMessage(e)),
+                       type = "error", duration = NULL)
+    })
+  })
+
+  # SiteName is available in FISH_query's Survey output. Use that supported
+  # interface rather than assuming which underlying FISHub table stores it.
+  # Populate when a waterbody name or MDNRID is specified; avoid a broad
+  # unfiltered survey query just to fill a dropdown.
+  observeEvent(list(input$water, input$mdnrid, input$fmu), {
+    db <- con()
+    req(db)
+    water <- input$water
+    mdnrids <- tryCatch(parse_csv(input$mdnrid, numeric = TRUE),
+                        error = function(e) NULL)
+    if (!length(water) && !length(mdnrids)) {
+      updateSelectizeInput(session, "site_name",
+                           choices = isolate(input$site_name),
+                           selected = isolate(input$site_name), server = TRUE)
+      return()
+    }
+    tryCatch({
+      survey_args <- list(con = db, QueryType = "Survey",
+                          WaterBodyName = if (length(water)) water else NULL,
+                          MDNRID = mdnrids,
+                          FMU = if (length(input$fmu)) input$fmu else NULL)
+      survey_data <- suppressMessages(suppressWarnings(
+        do.call(MFA::FISH_query, survey_args)
+      ))
+      if (!"SiteName" %in% names(survey_data))
+        stop("SiteName was not found in the FISH_query Survey output.")
+      sites <- sort(unique(as.character(survey_data$SiteName)))
+      sites <- sites[!is.na(sites) & nzchar(trimws(sites))]
+      current <- isolate(input$site_name)
+      updateSelectizeInput(session, "site_name", choices = unique(c(sites, current)),
+                           selected = current, server = TRUE)
+    }, error = function(e) {
+      showNotification(paste("Could not load site name suggestions:", conditionMessage(e)),
+                       type = "warning", duration = 8)
+    })
+  })
+
+  # Populate county choices from the County lookup table.
+  observeEvent(con(), {
+    db <- con()
+    req(db)
+    tryCatch({
+      counties <- dplyr::tbl(db, "County") %>%
+        dplyr::distinct(CountyName) %>%
+        dplyr::collect() %>%
+        dplyr::pull(CountyName)
+      counties <- sort(unique(counties[!is.na(counties) & nzchar(trimws(counties))]))
+      updateSelectizeInput(session, "county", choices = counties,
+                           selected = isolate(input$county), server = TRUE)
+    }, error = function(e) {
+      showNotification(paste("Could not load counties:", conditionMessage(e)),
+                       type = "error", duration = NULL)
+    })
+  })
+
   # All species for survey discovery; species actually recorded in the
   # selected surveys for effort/catch filtering. Read directly from FISHub
   # instead of running a full catch summary just to populate a dropdown.
@@ -660,8 +768,28 @@ server <- function(input, output, session) {
       return()
     }
     tryCatch({
+      mdnrids <- parse_csv(input$mdnrid, numeric = TRUE)
+      # FISH_query already accepts MDNRID. Resolve county to active MDNRIDs
+      # so this filter does not require a new CountyName argument in MFA.
+      if (length(input$county)) {
+        county_ids <- dplyr::tbl(con(), "WaterBody") %>%
+          dplyr::filter(IsActive == TRUE) %>%
+          dplyr::inner_join(
+            dplyr::tbl(con(), "County") %>%
+              dplyr::filter(CountyName %in% !!input$county) %>%
+              dplyr::select(CountyId),
+            by = "CountyId"
+          ) %>%
+          dplyr::distinct(MDNRID) %>%
+          dplyr::collect() %>%
+          dplyr::pull(MDNRID)
+        mdnrids <- if (length(mdnrids)) intersect(mdnrids, county_ids) else county_ids
+        if (!length(mdnrids)) stop("No waterbodies match the selected county and MDNRID filters.")
+      }
       args <- list(con = con(), QueryType = "Survey",
-                   MDNRID = parse_csv(input$mdnrid), WaterBodyName = parse_csv(input$water),
+                   MDNRID = mdnrids,
+                   WaterBodyName = if (length(input$water)) input$water else NULL,
+                   SiteName = if (length(input$site_name)) input$site_name else NULL,
                    FMU = if (length(input$fmu)) input$fmu else NULL,
                    WaterTypeAbbr = if (length(input$water_type)) input$water_type else NULL,
                    SurveyId = parse_csv(input$survey_id, TRUE),
@@ -762,12 +890,14 @@ server <- function(input, output, session) {
     viewed_type(NULL)
   }, ignoreInit = TRUE)
   observeEvent(input$reset_query, {
+    updateSelectizeInput(session, "water", selected = character(0))
+    updateSelectizeInput(session, "county", selected = character(0))
     updateTextInput(session, "mdnrid", value = "")
-    updateTextInput(session, "water", value = "")
+    updateSelectizeInput(session, "site_name", selected = character(0))
     updateTextInput(session, "survey_id", value = "")
     updateTextInput(session, "year", value = "")
     updateSelectizeInput(session, "species", selected = character(0))
-    for (id in c("fmu", "water_type", "purpose", "gear"))
+    for (id in c("fmu", "water_type", "category", "purpose", "gear"))
       updateSelectInput(session, id, selected = character(0))
     queried(NULL)
   })
