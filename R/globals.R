@@ -74,7 +74,7 @@ utils::globalVariables(c(
   "n",
   "EffortNumberofGearUsed",
   "Gabelhouse_RSD_lengths",
-  "AgencyOrganizationalUnitId",
+  "EntityOrganizationalUnitId",
   "UnitReportId",
   "WaterId",
   "WaterTypeId",

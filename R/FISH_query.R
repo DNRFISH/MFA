@@ -205,7 +205,7 @@ FISH_query <- function(con,
   #WaterBody
   WaterBody<-tbl(con, "WaterBody") %>%
     filter(IsActive==TRUE)%>% #filter out inactive rows to avoid duplicates Issue #1
-    left_join(tbl(con, "AgencyOrganizationalUnit")%>%select(AgencyOrganizationalUnitId,UnitReportId),by = "AgencyOrganizationalUnitId")%>%
+    left_join(tbl(con, "EntityOrganizationalUnit")%>%select(EntityOrganizationalUnitId,UnitReportId),by = "EntityOrganizationalUnitId")%>%
     left_join(tbl(con, "Water")%>%select(WaterId,WaterTypeId),by = "WaterId")%>%
     left_join(tbl(con, "WaterType")%>%select(WaterTypeId,Name),by = "WaterTypeId")%>%
     mutate(
