@@ -358,14 +358,17 @@ ui <- navbarPage(
                           p(class = "mfa-note", "These filters apply to every analysis and to effort/catch data viewed or exported here. Species filtering excludes efforts without catches of the selected species; consider this when interpreting CPUE and other effort-based results."),
                           actionButton("clear_effort_filters", "Clear filters", width = "100%"),
                           hr(),
-                          selectInput("data_type", "Data to view", c("Effort data" = "Efforts", "Catch data" = "Catch")),
+                          selectInput("data_type", "Data to view", c("Effort data" = "Efforts", "Effort summary" = "EffortSummary", "Catch data" = "Catch")),
+                          conditionalPanel("input.data_type == 'EffortSummary'",
+                                           checkboxInput("aggregate_effort", "Aggregate across surveys", FALSE),
+                                           p(class = "mfa-note", "When checked, effort is summarized across surveys by gear type and measurement unit.")),
                           actionButton("load_data", "Load data", class = "btn-primary", width = "100%"),
                           br(), br(),
                           uiOutput("data_export_ui")
              ),
              mainPanel(width = 9, class = "main-panel",
                        h3("Survey effort and catch data"),
-                       p("Choose a data type and load records for the selected surveys. Large queries may take time."),
+                       p("Choose effort records, catch records, or an effort summary for the selected surveys. Large queries may take time."),
                        uiOutput("data_summary"),
                        DTOutput("data_table")
              )
@@ -925,6 +928,12 @@ server <- function(input, output, session) {
     analysis_kind(NULL)
   }, ignoreInit = TRUE)
   
+  # Aggregation changes require reloading the displayed summary.
+  observeEvent(list(input$data_type, input$aggregate_effort), {
+    viewed_data(NULL)
+    viewed_type(NULL)
+  }, ignoreInit = TRUE)
+
   observeEvent(input$load_data, {
     if (!connect_fishub()) {
       notify_connection()
@@ -941,12 +950,27 @@ server <- function(input, output, session) {
       tryCatch({
         type <- input$data_type
         filters <- active_filters()
-        result <- fetch_data(con(), type, ids, NULL, filters$gear, filters$species)
+        source_type <- if (identical(type, "EffortSummary")) "Efforts" else type
+        source <- fetch_data(con(), source_type, ids, NULL, filters$gear, filters$species)
+        if (identical(type, "EffortSummary")) {
+          summary <- capture_mfa(MFA::effortSummary(
+            source$data, Aggregate = isTRUE(input$aggregate_effort)
+          ))
+          displayed <- summary$data
+          label <- "Effort summary"
+          notes <- c(source$notes, summary$notes)
+          warnings <- c(source$warnings, summary$warnings)
+        } else {
+          displayed <- source$data
+          label <- type
+          notes <- source$notes
+          warnings <- source$warnings
+        }
         incProgress(1)
-        viewed_data(result$data)
-        viewed_type(type)
-        show_messages(result$notes)
-        show_warnings(result$warnings, paste(type, "data warnings"))
+        viewed_data(displayed)
+        viewed_type(label)
+        show_messages(notes)
+        show_warnings(warnings, paste(label, "data warnings"))
       }, error = function(e) showNotification(paste("Data query failed:", conditionMessage(e)), type = "error", duration = NULL))
     })
   })
@@ -964,7 +988,7 @@ server <- function(input, output, session) {
     downloadButton("export_viewed_data", paste("Download", viewed_type(), "CSV"))
   })
   output$export_viewed_data <- downloadHandler(
-    filename = function() paste0("MFA_", viewed_type(), "_", Sys.Date(), ".csv"),
+    filename = function() paste0("MFA_", gsub(" ", "_", viewed_type()), "_", Sys.Date(), ".csv"),
     content = function(file) {
       req(viewed_data())
       write.csv(viewed_data(), file, row.names = FALSE, na = "")

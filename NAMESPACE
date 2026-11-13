@@ -7,6 +7,7 @@ export(RSD)
 export(ageLengthSummary)
 export(catchSummary)
 export(detectionByYear)
+export(effortSummary)
 export(lengthFreqByEffort)
 export(run_MFA_app)
 import(DT)
@@ -55,6 +56,7 @@ importFrom(ggplot2,
 )
 importFrom(lubridate,year)
 importFrom(rlang,
+  ":=",
   .data,
   .env
 )

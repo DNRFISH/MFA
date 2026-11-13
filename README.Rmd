@@ -4,6 +4,7 @@ output: github_document
 
 <!-- README.md is generated from README.Rmd. Edit README.Rmd and the shared tutorial instead. -->
 
+
 # Michigan Fisheries Analysis (MFA)
 
 Michigan Fisheries Analysis (MFA) is an R package for querying and summarizing fisheries data from the Michigan Department of Natural Resources FISHub database. It supports retrieval of survey, effort, and catch data and analyses such as catch summaries, catch per unit effort (CPUE), length-frequency distributions, age-length summaries, species detection, and relative stock density (RSD).

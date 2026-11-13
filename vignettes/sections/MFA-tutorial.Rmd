@@ -13,6 +13,7 @@ con <- FISHub_connect()
 |---|---|
 | `FISHub_connect()` | Connect to the FISHub database |
 | `FISH_query()` | Query survey, effort, and catch data |
+| `effortSummary()` | Summarize efforts |
 | `catchSummary()` | Summarize catch |
 | `CPUE_byGear()` | Calculate catch per unit effort by gear |
 | `ageLengthSummary()` | Summarize age and length data |
@@ -68,6 +69,15 @@ catch <- FISH_query(
 ```
 
 ## Fisheries summaries
+
+### Effort summary
+
+`effortSummary()` returns one row per survey and GearType, including number of efforts, number of efforts measured, 
+number of efforts missing measurements, units, and total effort values. Default is to keep surveys separate, with an option to aggregate across all surveys.
+
+```{r eval=FALSE}
+effort_summary <- effortSummary(catch)
+```
 
 ### Catch summary
 

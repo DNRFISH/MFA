@@ -78,5 +78,11 @@ utils::globalVariables(c(
   "UnitReportId",
   "WaterId",
   "WaterTypeId",
-  "Name"
+  "Name",
+  "CountyId",
+  "CountyName",
+  "SiteId",
+  "IsMeasured",
+  "N_Surveys",
+  "Total"
 ))

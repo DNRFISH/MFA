@@ -1,6 +1,6 @@
 Package: MFA
 Title: Michigan Fisheries Analysis
-Version: 2.00.03
+Version: 2.0.4
 Authors@R: 
     person("Lucas", "Nathan", , "nathanl@michigan.gov", role = c("aut", "cre"))
 Description: Provides tools for querying and summarizing fisheries data from FISHub and other data sources for MDNR-Fisheries.
@@ -17,7 +17,8 @@ Imports:
     tibble,
     rlang,
     shiny,
-    DT
+    DT,
+    stringr
 Depends: 
     R (>= 3.5)
 LazyData: true
