@@ -3,6 +3,7 @@
 export(CPUE_byGear)
 export(FISH_query)
 export(FISHub_connect)
+export(MFA_map)
 export(RSD)
 export(ageLengthSummary)
 export(catchSummary)
@@ -39,6 +40,7 @@ importFrom(dplyr,
 importFrom(ggplot2,
   aes,
   element_text,
+  facet_grid,
   facet_wrap,
   geom_bar,
   geom_col,
