@@ -230,8 +230,8 @@ FISH_query <- function(con,
         TRUE ~ UnitReportId
       )
     )%>%
-    select(MDNRID,WaterBodyName,FMU,CountyName,Name)%>%
-    rename(WaterTypeAbbr=Name)%>%
+    select(MDNRID,WaterBodyName,FMU,CountyName,Name,Latitude,Longitude)%>%
+    rename(WaterTypeAbbr=Name,WaterLat=Latitude,WaterLong=Longitude)%>%
     distinct(MDNRID, WaterBodyName, .keep_all = TRUE)#*should we carry over old waterbody ID for unlocated ones?
   
   if(!is.null(MDNRID)){
@@ -351,9 +351,10 @@ FISH_query <- function(con,
       select(SurveyId,SurveyEffortId,SurveyEffortKey,ModuleId)%>%
       left_join(tbl(con, "SurveyEffortDetail"),by="SurveyEffortId")%>%
       left_join(tbl(con, "Gear") %>%select(GearId, GearType),by="GearId")%>%
+      left_join(tbl(con, "SurveyEffortGearSet") %>%select(SurveyEffortId, StartingLatitude,StartingLongitude),by="SurveyEffortId")%>%
       mutate(GearType=trimws(GearType))%>%
-      select(SurveyId,SurveyEffortId,SurveyEffortKey,ModuleId,BeginningEffortTimestamp, EndingEffortTimestamp, GearType,EffortNumberofGearUsed, EffortTotalQuantity, 
-             EffortTotalMeasurement, EffortAlternateQuantity, EffortAlternateMeasurement)
+      select(SurveyId,SurveyEffortId,SurveyEffortKey,ModuleId,BeginningEffortTimestamp, EndingEffortTimestamp,StartingLatitude,StartingLongitude,
+             GearType,EffortNumberofGearUsed, EffortTotalQuantity,EffortTotalMeasurement, EffortAlternateQuantity, EffortAlternateMeasurement)
     
     if(!is.null(GearType)){
       if(!all(GearType%in%c("ANGLING", "BACKSHK", "BOOMSHK", "Envelop", "EXPGNET", "GLGNET",
