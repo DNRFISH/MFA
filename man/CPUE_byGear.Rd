@@ -4,7 +4,7 @@
 \alias{CPUE_byGear}
 \title{CPUE_byGear}
 \usage{
-CPUE_byGear(catchData, OutputType = "Table")
+CPUE_byGear(catchData, SummaryLevel = "Survey", OutputType = "Table")
 }
 \arguments{
 \item{catchData}{A data frame containing catch and effort data,
@@ -17,6 +17,10 @@ survey, waterbody, and gear fields required by this function, including
 \code{EffortTotalQuantity}, \code{EffortTotalMeasurement},
 \code{EffortAlternateQuantity}, and
 \code{EffortAlternateMeasurement}.}
+
+\item{SummaryLevel}{Character string specifying the level to summarize CPUE.
+Must be either \code{"Survey"} or \code{"Effort"}. The default is
+\code{"Survey"}.}
 
 \item{OutputType}{Character string specifying the type of output to
 return. Must be either \code{"Table"} or \code{"Figure"}. The default is
@@ -55,7 +59,7 @@ are displayed as separate bars.
 Calculate catch per unit effort (CPUE) by gear and species
 }
 \details{
-Calculates catch per unit effort (CPUE) by survey, gear type, and species
+Calculates catch per unit effort (CPUE) by survey or survey effort key, gear type, and species
 using catch and effort data returned by \code{\link{FISH_query}}. The
 function can return either a summary data frame or a figure showing CPUE
 by species, with separate panels for each gear type.
@@ -127,6 +131,7 @@ catchData <- FISH_query(
 )
 
 CPUE <- CPUE_byGear(catchData)
+CPUE <- CPUE_byGear(catchData,SummaryLevel="Effort")
 
 # Calculate CPUE for multiple Status & Trends surveys
 catchData <- FISH_query(

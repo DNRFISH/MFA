@@ -2,7 +2,7 @@
 #'
 #' Calculate catch per unit effort (CPUE) by gear and species
 #'
-#' Calculates catch per unit effort (CPUE) by survey, gear type, and species
+#' Calculates catch per unit effort (CPUE) by survey or survey effort key, gear type, and species
 #' using catch and effort data returned by \code{\link{FISH_query}}. The
 #' function can return either a summary data frame or a figure showing CPUE
 #' by species, with separate panels for each gear type.
@@ -34,6 +34,10 @@
 #'   \code{EffortTotalQuantity}, \code{EffortTotalMeasurement},
 #'   \code{EffortAlternateQuantity}, and
 #'   \code{EffortAlternateMeasurement}.
+#'   
+#' @param SummaryLevel Character string specifying the level to summarize CPUE. 
+#'  Must be either \code{"Survey"} or \code{"Effort"}. The default is
+#'   \code{"Survey"}.
 #'
 #' @param OutputType Character string specifying the type of output to
 #'   return. Must be either \code{"Table"} or \code{"Figure"}. The default is
@@ -118,6 +122,7 @@
 #' )
 #'
 #' CPUE <- CPUE_byGear(catchData)
+#' CPUE <- CPUE_byGear(catchData,SummaryLevel="Effort")
 #'
 #' # Calculate CPUE for multiple Status & Trends surveys
 #' catchData <- FISH_query(
@@ -136,36 +141,41 @@
 #' )
 #' }
 #'
-#' @importFrom dplyr filter mutate if_else case_when select group_by summarize inner_join '%>%'
-#' @importFrom ggplot2 ggplot geom_bar aes facet_wrap theme_classic scale_fill_viridis_d xlab ylab labs theme element_text
+#' @importFrom dplyr filter mutate if_else case_when select group_by summarize inner_join
+#' @importFrom ggplot2 ggplot geom_bar aes facet_wrap facet_grid theme_classic scale_fill_viridis_d xlab ylab labs theme element_text
 #'   
 #' @export
 
 
-CPUE_byGear<-function(catchData,OutputType="Table"){
+CPUE_byGear<-function(catchData,SummaryLevel="Survey",OutputType="Table"){
   
   if (!OutputType %in% c("Table", "Figure")) {
     stop("OutputType must be either 'Table' or 'Figure'.")
   }
-  
-  #get efforts with NAs in effort quantity column for removal (e.g., limno or missing data)
-  effortsNA<-catchData%>%
-    filter(is.na(EffortTotalQuantity)&is.na(EffortAlternateQuantity))%>%
-    filter(trimws(GearType)!="LIMNO")
-
-  #print warning
-  if(nrow(effortsNA)>0){
-    message(paste0("WARNING:",nrow(effortsNA)," effort(s) removed from summary due to missing data. Look at raw output to determine missing data."))
+  if (!SummaryLevel %in% c("Survey", "Effort")) {
+    stop("SummaryLevel must be either 'Survey' or 'Effort'.")
   }
 
+  #remove limno data
+  catchDataNoLimno<-catchData|>
+    filter(trimws(GearType)!="LIMNO") 
+    
+  # #get efforts with NAs in effort quantity column for removal (e.g., limno or missing data)
+  # effortsNA<-catchDataNoLimno|>
+  #   filter(is.na(EffortTotalQuantity)&is.na(EffortAlternateQuantity))|>
+  #   distinct(SurveyId, SurveyEffortKey, GearType)
+  # 
+  # #print warning
+  # if(nrow(effortsNA)>0){
+  #   warning(paste0("WARNING:",nrow(effortsNA)," effort(s) removed from summary due to missing data. Look at raw output to determine missing data."))
+  # }
+
   #clean up data
-  catchDataClean<-catchData%>%
-    #remove missing efforts (a warning will spit out above)
-    filter(!is.na(EffortTotalQuantity) | !is.na(EffortAlternateQuantity))%>%
+  catchDataClean<-catchDataNoLimno|>
     #clean up effort units and values
     mutate(
       #use the EffortTotalQuantity and EffortTotalMeasurement as primary, if exists; otherwise pull from alternate
-      use_total = !is.na(EffortTotalQuantity) & EffortTotalQuantity != 0,
+      use_total = !is.na(EffortTotalQuantity) & EffortTotalQuantity > 0,
       Effort = if_else(
         use_total,
         EffortTotalQuantity,
@@ -187,28 +197,88 @@ CPUE_byGear<-function(catchData,OutputType="Table"){
         use_total ~ EffortAlternateMeasurement,
         TRUE      ~ EffortTotalMeasurement
       )
-    )%>%
-    select(-c(EffortTotalQuantity,EffortTotalMeasurement,EffortAlternateQuantity,EffortAlternateMeasurement,use_total))
+    )
     
+  # Identify invalid efforts
+  invalidEfforts <- catchDataClean |>
+    filter(
+      is.na(Effort) |
+        Effort <= 0 |
+        is.na(Unit) |
+        trimws(Unit) == ""
+    ) |>
+    distinct(SurveyId, SurveyEffortKey, GearType)
+  
+  # Warn about excluded efforts
+  if (nrow(invalidEfforts) > 0) {
+    warning(
+      nrow(invalidEfforts),
+      " effort(s) removed from CPUE calculation due to invalid effort measurements."
+    )
+  }
+  
+  # Remove invalid efforts
+  catchDataClean <- catchDataClean |>
+    filter(
+      !is.na(Effort),
+      Effort > 0,
+      !is.na(Unit),
+      trimws(Unit) != ""
+    ) |>
+    select(
+      -EffortTotalQuantity,
+      -EffortTotalMeasurement,
+      -EffortAlternateQuantity,
+      -EffortAlternateMeasurement,
+      -use_total
+    )
+  
+  # Set grouping variables based on summary level
+  group_vars <- c("SurveyId", "GearType")
+  
+  #add SurveyEffortKey, if summary by effort
+  if (SummaryLevel == "Effort") {
+    group_vars <- c(group_vars, "SurveyEffortKey")
+  }
+  
   #summarize catch data
-  catchByGear<-catchDataClean%>%
-    filter(!is.na(Species))%>%
-    group_by(SurveyId,GearType,Species)%>%
+  catchByGear<-catchDataClean|>
+    group_by(across(all_of(c(group_vars, "Species"))))|>
     summarize(TotalNumberCaught=sum(TotalNumberCaught,na.rm = T),.groups = "drop")
   
   #summarize effort data
-  effortByGear<-catchDataClean%>%
-    select(WaterBodyName,SurveyId,SurveyEffortId,SurveyEffortKey,GearType,EffortNumberofGearUsed,Effort,Unit,Effort_alt,Unit_alt)%>%
-    unique()%>%
-    group_by(WaterBodyName,SurveyId,GearType,Unit,Unit_alt)%>%
+  effortByGear<-catchDataClean|>
+    select(WaterBodyName,SurveyId,SurveyEffortId,SurveyEffortKey,GearType,EffortNumberofGearUsed,Effort,Unit,Effort_alt,Unit_alt)|>
+    unique()|>
+    group_by(across(all_of(c("WaterBodyName",group_vars,"Unit","Unit_alt"))))|>
     summarize(TotalEffort=sum(as.numeric(Effort)),
               TotalEffort_alt=sum(as.numeric(Effort_alt)),
               .groups = "drop")
   
   
-  #merge tables and calculate CPUE
-  allDat<-effortByGear%>%
-    inner_join(catchByGear,by=c("SurveyId","GearType"))%>%
+  # Identify all species caught within each survey
+  species_by_survey <- catchByGear %>%
+    filter(!is.na(Species)) %>%
+    distinct(SurveyId, Species)
+  
+  # Create all gear-species combinations within each survey
+  fullDat <- effortByGear %>%
+    left_join(
+      species_by_survey,
+      by = "SurveyId",
+      relationship = "many-to-many"
+    ) %>%
+    left_join(
+      catchByGear,
+      by = c(group_vars, "Species"),
+      relationship = "many-to-one"
+    ) %>%
+    mutate(
+      TotalNumberCaught = coalesce(TotalNumberCaught, 0)
+    )
+  
+  #calculate CPUE
+  allDat <- fullDat %>%
     mutate(
       TotalEffort = if_else(
         Unit == "Seconds",
@@ -227,25 +297,67 @@ CPUE_byGear<-function(catchData,OutputType="Table"){
         Unit_alt == "Seconds", "Minutes", Unit_alt
       ),
       CPUE=round(TotalNumberCaught/TotalEffort,2),
-      CPUE_alt=round(TotalNumberCaught/TotalEffort_alt),2)%>%
-    select(WaterBodyName,SurveyId,GearType,Species,TotalNumberCaught,
-           TotalEffort,Unit,CPUE,
-           TotalEffort_alt,Unit_alt,CPUE_alt)
+      CPUE_alt=round(TotalNumberCaught/TotalEffort_alt,2))|>
+    select(all_of(c("WaterBodyName",group_vars,"Species","TotalNumberCaught",
+                  "TotalEffort","Unit","CPUE",
+                  "TotalEffort_alt","Unit_alt","CPUE_alt")))
   
   if(OutputType=="Table"){
     return(allDat)
   }
   
   if(OutputType=="Figure"){
-    plotOut<-ggplot(allDat)+
-      geom_bar(aes(x=Species,y=CPUE,fill=as.factor(SurveyId)),stat="identity",position = "dodge")+
-      facet_wrap(~GearType,scales = "free")+
-      theme_classic()+
-      scale_fill_viridis_d()+
-      xlab("Species")+ylab("CPUE (net lift or minutes E-fishing)")+labs(fill="Survey")+
-      theme(
-        axis.text.x = element_text(angle = 90,vjust = 0.5, hjust = 1)
-      )
+    if (OutputType == "Figure") {
+      
+      if (SummaryLevel == "Survey") {
+        
+        # CPUE by survey, gear, and species
+        plotOut <- ggplot(allDat) +
+          geom_col(
+            aes(x = Species, y = CPUE, fill = as.factor(SurveyId)),
+            position = "dodge"
+          ) +
+          facet_wrap(~GearType, scales = "free") +
+          scale_fill_viridis_d() +
+          labs(
+            x = "Species",
+            y = "CPUE",
+            fill = "Survey"
+          )
+        
+      } else {
+        
+        # CPUE by individual effort, gear, and species
+        plotOut <- ggplot(allDat) +
+          geom_col(
+            aes(
+              x = factor(SurveyEffortKey),
+              y = CPUE,
+              fill = Species
+            ),
+            position = "dodge"
+          ) +
+          facet_grid(SurveyId ~ GearType, scales = "free_x", space = "free_x") +
+          scale_fill_viridis_d() +
+          labs(
+            x = "Survey Effort Key",
+            y = "CPUE",
+            fill = "Species"
+          )
+      }
+      
+      plotOut <- plotOut +
+        theme_classic() +
+        theme(
+          axis.text.x = element_text(
+            angle = 90,
+            vjust = 0.5,
+            hjust = 1
+          )
+        )
+      
+      return(plotOut)
+    }
     return(plotOut)
     
   }

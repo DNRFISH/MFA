@@ -89,11 +89,13 @@ catch_summary <- catchSummary(catch)
 
 ### Catch per unit effort (CPUE)
 
-`CPUE_byGear()` summarizes catch per unit effort by sampling gear and can return a table or figure:
+`CPUE_byGear()` summarizes catch per unit effort by sampling gear by survey or effort and can return a table or figure:
 
 ```{r eval=FALSE}
 cpue <- CPUE_byGear(catchData = catch, OutputType = "Table")
 CPUE_byGear(catchData = catch, OutputType = "Figure")
+CPUE_byGear(catchData = catch, OutputType = "Figure",SummaryLevel="Effort")
+
 ```
 
 ### Age-length summaries
