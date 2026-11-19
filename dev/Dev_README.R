@@ -2,6 +2,42 @@
 # MFA DEVELOPER README
 # ============================================================
 #
+
+# ------------------------------------------------------------
+# BRANCHING AND VERSION CONTROL
+# ------------------------------------------------------------
+#
+# Use Git branches to develop new features, fix bugs, or make
+# substantial changes without affecting the main branch.
+#
+# 1. CREATE A BRANCH
+#    - Start from an up-to-date main branch.
+#    - Use descriptive names, such as:
+#        feature/effort-summary
+#        fix/legal-size-override
+#        update/shiny-interface
+#    - Small documentation changes can be made on main.
+#
+# 2. DEVELOP AND TEST
+#    - Make code, test, and documentation changes
+#      within the branch.
+#    - Commit changes regularly with descriptive messages.
+#    - Push the branch to GitHub as needed.
+#
+# 3. MERGE INTO MAIN
+#    - Run relevant tests and package checks.
+#    - Review changes before merging.
+#    - Merge the branch into main once changes are complete.
+#    - Delete the branch after a successful merge.
+#
+# 4. PREPARE RELEASE
+#    - Build releases from main, not development branches.
+#    - Confirm all intended changes have been merged.
+#
+# General rule:
+# Keep main stable and use branches for work that is
+# incomplete, experimental, or could affect existing code.
+
 # DEVELOPMENT WORKFLOW
 #
 # Follow these steps when adding or modifying MFA functions.
