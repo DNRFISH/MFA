@@ -107,12 +107,16 @@
 # Reload development package after code changes
 devtools::load_all()
 
+#Install a branch or force install of current release
+remotes::install_github("DNRFISH/MFA", ref = "mapping")
+install.packages("C:/Users/nathanl/State of Michigan DTMB/Writing Resources for Managers - Documents/MFA/MFA_versions/MFA_2.0.4.zip",repos = NULL,type = "win.binary")
+
 # Generate documentation and update NAMESPACE
 devtools::document()
 
 # Run a specific test file (e.g., test-catchSummary.R)
 devtools::test(filter = "app-live")
-devtools::test(filter = "effortSummary")
+devtools::test(filter = "FISH_query")
 
 # Run all tests
 devtools::test()
@@ -122,7 +126,6 @@ devtools::build_readme()
 
 # Check package (tests currently run separately)
 devtools::check(args = "--no-tests")
-
 
 # ------------------------------------------------------------
 # BUILD RELEASE
